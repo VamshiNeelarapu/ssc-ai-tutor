@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f3f6fb;
+  --foreground: #1a2233;
+  --card: #fafbfe;
+  --card-foreground: #121a2b;
+  --border: #d6dfee;
+  --input: #e8edf6;
+  --primary: #1f4e9c;
+  --primary-foreground: #ffffff;
+  --muted: #e8edf6;
+  --muted-foreground: #64708a;
+  --accent: #e3ebf7;
+  --accent-foreground: #0f2447;
+  --destructive: #b94040;
+  --destructive-foreground: #ffffff;
+  --ring: #1f4e9c;
+  --radius: 0.5rem;
+  --sidebar-bg: #0f2447;
+  --sidebar-fg: #a9bde0;
+  --sidebar-border: #1f3a6b;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --card: #111827;
+  --card-foreground: #f9fafb;
+  --border: #374151;
+  --input: #1f2937;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --muted: #1f2937;
+  --muted-foreground: #9ca3af;
+  --accent: #1f2937;
+  --accent-foreground: #f9fafb;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --ring: #3b82f6;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:pointer-events-none disabled:opacity-50 px-4 py-2;
+  }
+
+  .btn-primary {
+    @apply btn bg-[#1f4e9c] text-white hover:bg-[#173d7d];
+  }
+
+  .btn-secondary {
+    @apply btn bg-[#e1e8f4] text-[#1a2233] hover:bg-[#d6dfee];
+  }
+
+  .btn-danger {
+    @apply btn bg-[#b94040] text-white hover:bg-[#9e3535];
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-[#e1e8f4] text-[#1a2233];
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b7c3da;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #93a3c2;
+}
+
+/* Prose styling for markdown content */
+.prose {
+  @apply text-gray-900 leading-relaxed;
+}
+
+.prose h1, .prose h2, .prose h3 {
+  @apply font-bold mt-6 mb-3;
+}
+
+.prose h1 { @apply text-2xl; }
+.prose h2 { @apply text-xl; }
+.prose h3 { @apply text-lg; }
+
+.prose p { @apply mb-4; }
+.prose ul { @apply list-disc list-inside mb-4 space-y-1; }
+.prose ol { @apply list-decimal list-inside mb-4 space-y-1; }
+.prose strong { @apply font-semibold; }
+.prose em { @apply italic; }
+.prose code { @apply bg-gray-100 px-1 rounded text-sm font-mono; }
+.prose pre { @apply bg-gray-900 text-gray-100 p-4 rounded-lg mb-4 overflow-x-auto; }
+.prose blockquote { @apply border-l-4 border-[#1f4e9c] pl-4 italic text-[#44506a] my-4; }
+.prose table { @apply w-full border-collapse mb-4; }
+.prose th { @apply border border-[#d6dfee] px-3 py-2 bg-[#e8edf6] font-semibold text-left; }
+.prose td { @apply border border-[#d6dfee] px-3 py-2; }

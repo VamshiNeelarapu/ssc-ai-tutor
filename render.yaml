@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: ssc-ai-tutor
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: AI_PROVIDER
+        value: openrouter
+      - key: AI_MODEL
+        value: anthropic/claude-3-haiku
+      - key: AI_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
