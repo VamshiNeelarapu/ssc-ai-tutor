@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
         .skip(skip)
         .limit(limit)
         .select(
-          "title subjectId sectionId topicId examRelevance revisionStatus sourceConversationId createdAt updatedAt"
+          "title subjectId sectionId topicId examRelevance revisionStatus sourceConversationId kind monthKey createdAt updatedAt"
         ),
       StudyNote.countDocuments(query),
     ]);
@@ -144,6 +144,8 @@ export async function GET(request: NextRequest) {
         examRelevance: note.examRelevance,
         revisionStatus: note.revisionStatus,
         sourceConversationId: note.sourceConversationId,
+        kind: note.kind ?? "note",
+        monthKey: note.monthKey,
         createdAt: note.createdAt,
         updatedAt: note.updatedAt,
       })),

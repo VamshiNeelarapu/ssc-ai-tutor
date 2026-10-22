@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getStoredModel } from "@/lib/models";
+import { readApiError, toAppError } from "@/lib/client-errors";
+import { useErrorPopup } from "@/components/ErrorPopup";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -43,6 +45,7 @@ export interface NoteDraft {
 
 export function useChat(initialConversationId?: string, subject?: string, topic?: string, topicId?: string) {
   const router = useRouter();
+  const { showError } = useErrorPopup();
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -55,7 +58,6 @@ export function useChat(initialConversationId?: string, subject?: string, topic?
   );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<NoteDraft | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftData, setDraftData] = useState<{
@@ -68,8 +70,9 @@ export function useChat(initialConversationId?: string, subject?: string, topic?
   } | null>(null);
 
   const sendMessage = useCallback(
-    async (content: string) => {
-      if (!content.trim()) return;
+    async (content: string): Promise<boolean> => {
+      if (!content.trim()) return false;
+      const model = getStoredModel();
 
       const userMessage: ChatMessage = {
         role: "user",
@@ -79,7 +82,6 @@ export function useChat(initialConversationId?: string, subject?: string, topic?
 
       setMessages((prev) => [...prev, userMessage]);
       setLoading(true);
-      setError(null);
 
       try {
         const res = await fetch("/api/chat", {
@@ -88,7 +90,7 @@ export function useChat(initialConversationId?: string, subject?: string, topic?
           body: JSON.stringify({
             message: content,
             conversationId,
-            model: getStoredModel(),
+            model,
             // Only send subject/topic on the very first message (when conversation doesn't exist yet)
             ...(!conversationId && subject ? { subject } : {}),
             ...(!conversationId && topic ? { topic } : {}),
@@ -97,8 +99,10 @@ export function useChat(initialConversationId?: string, subject?: string, topic?
         });
 
         if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Failed to send message");
+          showError(await readApiError(res, "Failed to send message", model));
+          // Remove the optimistic user message
+          setMessages((prev) => prev.slice(0, -1));
+          return false;
         }
 
         const data = await res.json();
@@ -119,36 +123,38 @@ export function useChat(initialConversationId?: string, subject?: string, topic?
         if (!initialConversationId && data.conversationId && mountedRef.current) {
           router.replace(`/chat/${data.conversationId}`);
         }
+        return true;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to send message");
+        showError(toAppError(err, "Failed to send message", model));
         // Remove the optimistic user message
         setMessages((prev) => prev.slice(0, -1));
+        return false;
       } finally {
         setLoading(false);
       }
     },
-    [conversationId, initialConversationId, subject, topic, topicId, router]
+    [conversationId, initialConversationId, subject, topic, topicId, router, showError]
   );
 
   const generateDraft = useCallback(async () => {
     if (!conversationId) {
-      setError("No conversation to generate notes from");
+      showError("No conversation to generate notes from");
       return;
     }
 
+    const model = getStoredModel();
     setDraftLoading(true);
-    setError(null);
 
     try {
       const res = await fetch("/api/notes/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId, model: getStoredModel(), ...(topicId ? { topicId } : {}) }),
+        body: JSON.stringify({ conversationId, model, ...(topicId ? { topicId } : {}) }),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to generate draft");
+        showError(await readApiError(res, "Failed to generate draft", model));
+        return;
       }
 
       const data = await res.json();
@@ -162,11 +168,11 @@ export function useChat(initialConversationId?: string, subject?: string, topic?
         sourceConversationId: conversationId,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate draft");
+      showError(toAppError(err, "Failed to generate draft", model));
     } finally {
       setDraftLoading(false);
     }
-  }, [conversationId, topicId]);
+  }, [conversationId, topicId, showError]);
 
   const clearDraft = useCallback(() => {
     setDraft(null);
@@ -177,7 +183,6 @@ export function useChat(initialConversationId?: string, subject?: string, topic?
     conversationId,
     messages,
     loading,
-    error,
     draft,
     draftData,
     draftLoading,

@@ -41,7 +41,11 @@ export interface IStudyNoteContent {
   references: IReference[];
 }
 
+export type NoteKind = "note" | "current_affairs_month";
+
 export interface IStudyNote extends Document {
+  kind: NoteKind;
+  monthKey?: string;
   userId: string;
   title: string;
   subjectId?: string;
@@ -158,6 +162,14 @@ const StudyNoteSchema = new Schema<IStudyNote>(
       type: String,
       ref: "Conversation",
     },
+    kind: {
+      type: String,
+      enum: ["note", "current_affairs_month"],
+      default: "note",
+    },
+    monthKey: {
+      type: String,
+    },
   },
   {
     timestamps: true,
@@ -167,6 +179,10 @@ const StudyNoteSchema = new Schema<IStudyNote>(
 StudyNoteSchema.index({ userId: 1 });
 StudyNoteSchema.index({ userId: 1, subjectId: 1 });
 StudyNoteSchema.index({ userId: 1, revisionStatus: 1 });
+StudyNoteSchema.index(
+  { userId: 1, monthKey: 1 },
+  { unique: true, partialFilterExpression: { kind: "current_affairs_month" } }
+);
 StudyNoteSchema.index({ title: "text", "content.overview": "text" });
 
 const StudyNote: Model<IStudyNote> =

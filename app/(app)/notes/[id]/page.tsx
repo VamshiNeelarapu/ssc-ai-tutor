@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   ChevronDown,
   Download,
+  Newspaper,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { RevisionBadge } from "@/components/ui/Badge";
@@ -183,12 +184,21 @@ export default function NoteDetailPage({
                 Quiz Me
               </Button>
             </Link>
-            <Link href={`/notes/${params.id}/edit`}>
-              <Button variant="secondary" size="sm">
-                <Edit3 size={14} aria-hidden="true" />
-                Edit
-              </Button>
-            </Link>
+            {note.kind === "current_affairs_month" ? (
+              <Link href="/current-affairs">
+                <Button variant="secondary" size="sm">
+                  <Newspaper size={14} aria-hidden="true" />
+                  Update daily
+                </Button>
+              </Link>
+            ) : (
+              <Link href={`/notes/${params.id}/edit`}>
+                <Button variant="secondary" size="sm">
+                  <Edit3 size={14} aria-hidden="true" />
+                  Edit
+                </Button>
+              </Link>
+            )}
 
             {/* Download PDF dropdown */}
             <div className="relative" ref={pdfDropdownRef}>

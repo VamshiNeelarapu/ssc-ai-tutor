@@ -25,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f3f6fb]">
+    <div className="fixed inset-0 flex overflow-clip bg-[#f3f6fb]">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -42,7 +42,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-clip">
         {/* Mobile top bar */}
         <header className="lg:hidden flex items-center h-14 px-4 border-b border-[#d6dfee] bg-[#fafbfe] flex-shrink-0">
           <button
@@ -56,7 +56,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto" id="main-content">
+        <main className="flex-1 min-h-0 overflow-auto" id="main-content">
           {children}
         </main>
       </div>

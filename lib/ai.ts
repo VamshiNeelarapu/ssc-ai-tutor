@@ -103,7 +103,33 @@ export async function chat(messages: Message[], options?: { maxTokens?: number; 
     max_tokens: options?.maxTokens || 8192,
   });
 
-  return response.choices[0]?.message?.content || "";
+  const choice = response.choices[0];
+  const content = choice?.message?.content?.trim() || "";
+  if (!content) {
+    throw new EmptyAIResponseError(choice?.finish_reason ?? undefined);
+  }
+  return content;
+}
+
+export class DraftGenerationError extends Error {
+  constructor(
+    public reason: string,
+    public modelsTried: number
+  ) {
+    super(`The AI's response was incomplete or malformed after trying ${modelsTried} model(s) (${reason}).`);
+    this.name = "DraftGenerationError";
+  }
+}
+
+export class EmptyAIResponseError extends Error {
+  constructor(public finishReason?: string) {
+    super(
+      finishReason === "length"
+        ? "The model used its whole token limit before writing an answer. This often happens with reasoning models. Try again or pick another model."
+        : "The model returned an empty response. Try again or pick another model."
+    );
+    this.name = "EmptyAIResponseError";
+  }
 }
 
 // Zod schema for structured note content
@@ -191,7 +217,7 @@ export interface MCQ {
  * every still-open container. Returns null if nothing in the input was ever a complete
  * value (nothing safe to salvage).
  */
-function repairTruncatedJson(input: string): string | null {
+export function repairTruncatedJson(input: string): string | null {
   type Frame = { type: "object" | "array"; state: string };
   const frames: Frame[] = [];
   let lastSafeIndex = -1;
@@ -535,9 +561,7 @@ ${topicFocus ? `STRICT REQUIREMENT: This note is ONLY about "${topicFocus}". Do 
     );
   }
 
-  throw new Error(
-    `The AI's response was incomplete or malformed after trying ${modelsToTry.length} model(s) (${lastFailureReason}). Please try again.`
-  );
+  throw new DraftGenerationError(lastFailureReason, modelsToTry.length);
 }
 
 export async function generateQuiz(noteContent: StudyNoteContent, count: number = 5): Promise<MCQ[]> {

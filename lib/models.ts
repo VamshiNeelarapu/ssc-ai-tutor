@@ -44,6 +44,15 @@ export const AI_MODELS: AIModel[] = [
   },
 ];
 
+export interface CustomModel {
+  id: string;
+  label: string;
+}
+
+export const MODELS_CHANGED_EVENT = "models:changed";
+export const MAX_CUSTOM_MODELS = 20;
+export const MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:/_.-]*$/;
+
 export const DEFAULT_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
 export const MODEL_STORAGE_KEY = "ssc_ai_model";
 
@@ -51,8 +60,7 @@ export function getStoredModel(): string {
   if (typeof window === "undefined") return DEFAULT_MODEL;
   try {
     const stored = localStorage.getItem(MODEL_STORAGE_KEY);
-    if (stored && AI_MODELS.some((m) => m.id === stored)) return stored;
-    return DEFAULT_MODEL;
+    return stored || DEFAULT_MODEL;
   } catch {
     return DEFAULT_MODEL;
   }

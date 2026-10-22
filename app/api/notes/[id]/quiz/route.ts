@@ -5,6 +5,7 @@ import StudyNote from "@/models/StudyNote";
 import { requireAuth, apiError, apiSuccess, handleApiError } from "@/lib/api-utils";
 import { generateQuiz, StudyNoteContent } from "@/lib/ai";
 import { aiRateLimit } from "@/lib/rate-limit";
+import { aiErrorResponse, aiRateLimitResponse, aiNotConfiguredResponse } from "@/lib/ai-errors";
 
 const QuizSchema = z.object({
   count: z.number().min(1).max(20).default(5),
@@ -19,7 +20,7 @@ export async function POST(
 
     const limit = aiRateLimit(session.userId);
     if (!limit.success) {
-      return apiError("Too many AI requests. Please wait a moment.", 429);
+      return aiRateLimitResponse();
     }
 
     const body = await request.json().catch(() => ({}));
@@ -27,10 +28,7 @@ export async function POST(
     const count = validation.success ? validation.data.count : 5;
 
     if (!process.env.AI_API_KEY) {
-      return apiError(
-        "AI is not configured. Please set AI_API_KEY in your environment variables.",
-        503
-      );
+      return aiNotConfiguredResponse();
     }
 
     await connectToDatabase();
@@ -76,7 +74,7 @@ export async function POST(
         return apiSuccess({ questions: existingMcqs });
       }
 
-      return apiError("Failed to generate quiz questions. Please try again.", 503);
+      return aiErrorResponse(aiError);
     }
   } catch (error) {
     return handleApiError(error);

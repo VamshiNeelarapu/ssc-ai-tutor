@@ -9,6 +9,9 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useChat } from "@/hooks/useChat";
 import type { NoteDraft } from "@/hooks/useChat";
 import ModelSelector from "@/components/ModelSelector";
+import { SAMPLE_PROMPTS } from "@/lib/chat-prompts";
+import VoiceInputButton from "@/components/VoiceInputButton";
+import { useVoiceInput } from "@/hooks/useSpeechToText";
 
 export default function NewChatPage() {
   const router = useRouter();
@@ -22,7 +25,6 @@ export default function NewChatPage() {
     conversationId,
     messages,
     loading,
-    error,
     draft,
     draftData,
     draftLoading,
@@ -32,9 +34,12 @@ export default function NewChatPage() {
   } = useChat(undefined, subject, topic, topicId);
 
   const [input, setInput] = useState("");
-  const [hintUsed, setHintUsed] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const voice = useVoiceInput({
+    setText: setInput,
+    onEnd: () => inputRef.current?.focus(),
+  });
 
   useEffect(() => {
     const el = messagesContainerRef.current;
@@ -44,8 +49,13 @@ export default function NewChatPage() {
   const handleSend = async () => {
     const message = input.trim();
     if (!message || loading) return;
+    voice.cancel();
     setInput("");
-    await sendMessage(message);
+    const ok = await sendMessage(message);
+    if (!ok) {
+      setInput(message);
+      inputRef.current?.focus();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -66,9 +76,9 @@ export default function NewChatPage() {
   };
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full min-h-0 overflow-clip">
       {/* Chat panel */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-clip">
         {/* Scope banner */}
         {(topic || subject) && messages.length === 0 && (
           <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-100 text-blue-700 text-sm">
@@ -101,6 +111,7 @@ export default function NewChatPage() {
                   <button
                     key={prompt}
                     onClick={() => {
+                      voice.cancel();
                       setInput(prompt);
                       inputRef.current?.focus();
                     }}
@@ -136,20 +147,6 @@ export default function NewChatPage() {
           )}
         </div>
 
-        {/* Error message */}
-        {error && (
-          <div className="mx-4 mb-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg flex items-center justify-between">
-            <span>{error}</span>
-            <button
-              onClick={() => {}}
-              className="text-red-400 hover:text-red-600 ml-2"
-              aria-label="Dismiss error"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
-
         {/* Input area */}
         <div className="border-t border-gray-200 bg-white p-4">
           <div className="flex items-center justify-between mb-2">
@@ -177,11 +174,11 @@ export default function NewChatPage() {
             </div>
           )}
 
-          {hint && !hintUsed && messages.length === 0 && (
+          {hint && messages.length === 0 && !input.trim() && (
             <div className="mb-2">
               <p className="text-xs text-gray-400 mb-1">Suggested question:</p>
               <button
-                onClick={() => { setInput(hint); setHintUsed(true); inputRef.current?.focus(); }}
+                onClick={() => { voice.cancel(); setInput(hint); inputRef.current?.focus(); }}
                 className="text-left text-xs px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 hover:bg-blue-100 transition-colors w-full truncate"
               >
                 {hint}
@@ -193,12 +190,26 @@ export default function NewChatPage() {
             <textarea
               ref={inputRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                if (voice.listening) voice.cancel();
+                setInput(e.target.value);
+              }}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about any SSC CGL topic... (Enter to send, Shift+Enter for new line)"
+              placeholder={
+                voice.listening
+                  ? "Listening... speak now"
+                  : "Ask about any SSC CGL topic... (Enter to send, Shift+Enter for new line)"
+              }
               className="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] max-h-32"
               rows={1}
               aria-label="Chat message input"
+              disabled={loading}
+            />
+            <VoiceInputButton
+              listening={voice.listening}
+              lang={voice.lang}
+              onLangChange={voice.setLang}
+              onToggle={() => (voice.listening ? voice.stop() : voice.start(input))}
               disabled={loading}
             />
             <Button
@@ -302,10 +313,3 @@ function DraftPanel({
     </div>
   );
 }
-
-const SAMPLE_PROMPTS = [
-  "Teach me percentage with shortcut tricks for SSC CGL",
-  "Explain syllogism with Venn diagram method",
-  "Common subject-verb agreement errors in SSC English",
-  "Explain the Indian Constitution's fundamental rights",
-];

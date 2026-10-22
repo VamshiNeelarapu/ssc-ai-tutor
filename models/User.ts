@@ -1,9 +1,15 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
+export interface ICustomModel {
+  id: string;
+  label: string;
+}
+
 export interface IUser extends Document {
   email: string;
   passwordHash: string;
   name: string;
+  customModels: ICustomModel[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +31,18 @@ const UserSchema = new Schema<IUser>(
       type: String,
       required: true,
       trim: true,
+    },
+    customModels: {
+      type: [
+        new Schema<ICustomModel>(
+          {
+            id: { type: String, required: true, trim: true, maxlength: 100 },
+            label: { type: String, required: true, trim: true, maxlength: 40 },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
     },
   },
   {

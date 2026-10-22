@@ -6,6 +6,7 @@ import SyllabusNode from "@/models/SyllabusNode";
 import { requireAuth, apiError, apiSuccess, handleApiError } from "@/lib/api-utils";
 import { generateNoteDraft, Message } from "@/lib/ai";
 import { aiRateLimit } from "@/lib/rate-limit";
+import { aiErrorResponse, aiRateLimitResponse, aiNotConfiguredResponse } from "@/lib/ai-errors";
 
 const DraftSchema = z.object({
   conversationId: z.string().min(1),
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     const limit = aiRateLimit(session.userId);
     if (!limit.success) {
-      return apiError("Too many AI requests. Please wait a moment.", 429);
+      return aiRateLimitResponse();
     }
 
     const body = await request.json();
@@ -35,10 +36,7 @@ export async function POST(request: NextRequest) {
     const { conversationId, topicHint, subjectId, sectionId, topicId, model } = validation.data;
 
     if (!process.env.AI_API_KEY) {
-      return apiError(
-        "AI is not configured. Please set AI_API_KEY in your environment variables.",
-        503
-      );
+      return aiNotConfiguredResponse();
     }
 
     await connectToDatabase();
@@ -62,7 +60,7 @@ export async function POST(request: NextRequest) {
       draft = await generateNoteDraft(messages, topicHint, conversation.topic || undefined, model);
     } catch (aiError) {
       console.error("AI draft generation error:", aiError);
-      return apiError("Failed to generate draft. Please try again.", 503);
+      return aiErrorResponse(aiError, model);
     }
 
     let suggestedSubject = null;

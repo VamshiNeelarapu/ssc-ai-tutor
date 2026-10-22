@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Search, SlidersHorizontal, X, MessageSquare, BookOpen, FileText, ChevronRight, MessageSquareText } from "lucide-react";
+import { Search, SlidersHorizontal, X, MessageSquare, BookOpen, FileText, ChevronRight, MessageSquareText, Newspaper } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { NoteCard } from "@/components/NoteCard";
@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useNotes } from "@/hooks/useNotes";
+import { topicStudyPrompt } from "@/lib/chat-prompts";
+import { currentAffairsLinkForTopic, isCurrentAffairsSectionName } from "@/lib/current-affairs-config";
 
 const REVISION_STATUSES = [
   { value: "", label: "All" },
@@ -35,9 +37,7 @@ interface SyllabusNode {
 }
 
 function makeTopicChatUrl(topicId: string, entry: SyllabusEntry): string {
-  const hint = encodeURIComponent(
-    `I want to study "${entry.name}" for SSC CGL. Explain it in detail covering the core concept, key facts or formulas, shortcut methods, common traps, and the kinds of questions SSC asks from it.`
-  );
+  const hint = encodeURIComponent(topicStudyPrompt(entry.name));
   const subject = encodeURIComponent(entry.grandparentName || entry.parentName || "");
   const topic = encodeURIComponent(entry.name);
   return `/chat?hint=${hint}&subject=${subject}&topic=${topic}&topicId=${topicId}`;
@@ -177,6 +177,7 @@ export default function NotesPage() {
     : "";
 
   const topicEntry = topicId ? syllabusMap[topicId] : null;
+  const isCATopic = isCurrentAffairsSectionName(topicEntry?.parentName);
   const existingTopicConversationId = topicId ? conversationByTopic[topicId] : undefined;
   const topicChatUrl = existingTopicConversationId
     ? `/chat/${existingTopicConversationId}`
@@ -190,6 +191,8 @@ export default function NotesPage() {
     const headerBreadcrumb = headerEntry
       ? [headerEntry.grandparentName, headerEntry.parentName].filter(Boolean).join(" › ")
       : "";
+
+    const isCASection = isCurrentAffairsSectionName(headerEntry?.name);
 
     return (
       <div className="p-6 max-w-4xl mx-auto">
@@ -215,6 +218,24 @@ export default function NotesPage() {
             </button>
           </div>
         </div>
+
+        {isCASection && (
+          <Link
+            href="/current-affairs"
+            className="flex items-center gap-3 bg-[#eef3fb] border border-[#1f4e9c]/30 rounded-xl p-4 mb-4 hover:shadow-sm transition-shadow"
+          >
+            <div className="w-9 h-9 rounded-lg bg-[#1f4e9c] flex items-center justify-center flex-shrink-0">
+              <Newspaper size={18} className="text-white" aria-hidden="true" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 text-sm">Daily Current Affairs</p>
+              <p className="text-xs text-gray-500">
+                Today&apos;s news as a point-wise list, split into GS topics and Static GK. Build your monthly notes from it.
+              </p>
+            </div>
+            <ChevronRight size={16} className="text-gray-400 flex-shrink-0" aria-hidden="true" />
+          </Link>
+        )}
 
         {browseTopics.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
@@ -252,16 +273,29 @@ export default function NotesPage() {
                   </div>
 
                   <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100" onClick={(e) => e.preventDefault()}>
-                    <Link
-                      href={existingConversationId ? `/chat/${existingConversationId}` : makeTopicChatUrl(topic.id, topic)}
-                      className="flex-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white bg-[#1f4e9c] hover:bg-[#173d7d] rounded-md py-1.5 transition-colors">
-                        {existingConversationId ? <MessageSquareText size={12} /> : <MessageSquare size={12} />}
-                        {existingConversationId ? "Continue chat" : "Chat about this"}
-                      </button>
-                    </Link>
+                    {isCASection ? (
+                      <Link
+                        href={currentAffairsLinkForTopic(topic.name)}
+                        className="flex-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white bg-[#1f4e9c] hover:bg-[#173d7d] rounded-md py-1.5 transition-colors">
+                          <Newspaper size={12} />
+                          Today&apos;s updates
+                        </button>
+                      </Link>
+                    ) : (
+                      <Link
+                        href={existingConversationId ? `/chat/${existingConversationId}` : makeTopicChatUrl(topic.id, topic)}
+                        className="flex-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white bg-[#1f4e9c] hover:bg-[#173d7d] rounded-md py-1.5 transition-colors">
+                          {existingConversationId ? <MessageSquareText size={12} /> : <MessageSquare size={12} />}
+                          {existingConversationId ? "Continue chat" : "Chat about this"}
+                        </button>
+                      </Link>
+                    )}
                     <Link
                       href={`/notes?topicId=${topic.id}`}
                       className="flex-1"
@@ -303,8 +337,16 @@ export default function NotesPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              {isCATopic && topicEntry && (
+                <Link href={currentAffairsLinkForTopic(topicEntry.name)}>
+                  <Button size="sm">
+                    <Newspaper size={14} aria-hidden="true" />
+                    Today&apos;s updates
+                  </Button>
+                </Link>
+              )}
               <Link href={topicChatUrl || `/chat?topicId=${topicId}`}>
-                <Button size="sm">
+                <Button size="sm" variant={isCATopic ? "secondary" : "primary"}>
                   {existingTopicConversationId ? (
                     <MessageSquareText size={14} aria-hidden="true" />
                   ) : (

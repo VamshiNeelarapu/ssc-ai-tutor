@@ -9,7 +9,18 @@ export async function GET(request: NextRequest) {
 
     await connectToDatabase();
 
-    const conversations = await Conversation.find({ userId: session.userId })
+    // Remove stale empty conversations (e.g. left behind when the very first AI reply failed).
+    // Recent ones are kept because a reply may still be in flight.
+    await Conversation.deleteMany({
+      userId: session.userId,
+      "messages.0": { $exists: false },
+      createdAt: { $lt: new Date(Date.now() - 10 * 60 * 1000) },
+    });
+
+    const conversations = await Conversation.find({
+      userId: session.userId,
+      "messages.0": { $exists: true },
+    })
       .sort({ updatedAt: -1 })
       .limit(50)
       .select("title topicHint topicId updatedAt createdAt messages");

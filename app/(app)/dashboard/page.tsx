@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MessageSquare, FileText, Plus, TrendingUp, Sparkles } from "lucide-react";
+import { MessageSquare, FileText, Plus, TrendingUp, Sparkles, Newspaper } from "lucide-react";
 import useAuth from "@/hooks/useAuth";
 import { RevisionBadge } from "@/components/ui/Badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -23,6 +23,11 @@ interface Note {
   updatedAt: string;
 }
 
+interface CAPreviewItem {
+  point: string;
+  division: "gs" | "static";
+}
+
 interface SubjectCard {
   id: string;
   name: string;
@@ -36,16 +41,23 @@ export default function DashboardPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [subjects, setSubjects] = useState<SubjectCard[]>([]);
+  const [caItems, setCaItems] = useState<CAPreviewItem[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [convRes, notesRes, syllabusRes] = await Promise.all([
+        const [convRes, notesRes, syllabusRes, caRes] = await Promise.all([
           fetch("/api/conversations"),
           fetch("/api/notes?limit=5"),
           fetch("/api/syllabus"),
+          fetch("/api/current-affairs"),
         ]);
+
+        if (caRes.ok) {
+          const data = await caRes.json();
+          setCaItems(data.digest ? data.digest.items : []);
+        }
 
         if (convRes.ok) {
           const data = await convRes.json();
@@ -118,6 +130,39 @@ export default function DashboardPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Today's current affairs */}
+      <section aria-labelledby="ca-heading" className="bg-white border border-gray-200 rounded-xl p-5 mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 id="ca-heading" className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <Newspaper size={18} className="text-[#1f4e9c]" aria-hidden="true" />
+            Today&apos;s Current Affairs
+          </h2>
+          <Link href="/current-affairs" className="text-sm text-blue-600 hover:text-blue-500">
+            {caItems && caItems.length > 0 ? "See all" : "Open"}
+          </Link>
+        </div>
+        {caItems && caItems.length > 0 ? (
+          <ul className="space-y-2">
+            {caItems.slice(0, 4).map((item, i) => (
+              <li key={i} className="flex gap-2 text-sm text-gray-700">
+                <span className="text-[#1f4e9c] flex-shrink-0" aria-hidden="true">•</span>
+                <span className="line-clamp-2">{item.point}</span>
+              </li>
+            ))}
+            {caItems.length > 4 && (
+              <li className="text-xs text-gray-400 pl-4">+ {caItems.length - 4} more points today</li>
+            )}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-500">
+            Get today&apos;s news as a point-wise list, split into GS topics and Static GK.{" "}
+            <Link href="/current-affairs" className="text-blue-600 hover:text-blue-500">
+              Get today&apos;s current affairs
+            </Link>
+          </p>
+        )}
+      </section>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

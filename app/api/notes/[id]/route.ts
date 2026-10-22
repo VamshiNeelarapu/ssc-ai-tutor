@@ -90,6 +90,8 @@ export async function GET(
       content: note.content,
       revisionStatus: note.revisionStatus,
       sourceConversationId: note.sourceConversationId,
+      kind: note.kind ?? "note",
+      monthKey: note.monthKey,
       createdAt: note.createdAt,
       updatedAt: note.updatedAt,
     });
@@ -112,6 +114,16 @@ export async function PATCH(
     }
 
     await connectToDatabase();
+
+    if (validation.data.content) {
+      const existing = await StudyNote.findOne({ _id: params.id, userId: session.userId }).select("kind");
+      if (existing?.kind === "current_affairs_month") {
+        return apiError(
+          "This monthly current affairs note is rebuilt automatically from your daily digests, so its content can't be edited by hand. Add or refresh a day on the Current Affairs page instead.",
+          400
+        );
+      }
+    }
 
     const note = await StudyNote.findOneAndUpdate(
       { _id: params.id, userId: session.userId },

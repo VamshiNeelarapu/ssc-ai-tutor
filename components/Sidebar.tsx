@@ -7,6 +7,8 @@ import { clsx } from "clsx";
 import { Logo } from "./ui/Logo";
 import {
   LayoutDashboard,
+  Newspaper,
+  CalendarRange,
   MessageSquare,
   FileText,
   User,
@@ -75,6 +77,8 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/current-affairs", label: "Daily Current Affairs", icon: Newspaper },
+    { href: "/current-affairs/monthly", label: "Monthly Current Affairs", icon: CalendarRange },
     { href: "/notes", label: "My Notes", icon: FileText },
     { href: "/account", label: "Account", icon: User },
   ];
@@ -115,7 +119,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               href={href}
               className={clsx(
                 "flex items-center gap-3 px-4 py-2 text-sm transition-colors mx-2 rounded-md",
-                pathname === href || (href !== "/dashboard" && pathname.startsWith(href))
+                pathname === href || (href !== "/dashboard" && href !== "/current-affairs" && pathname.startsWith(href))
                   ? "bg-[#1d3c78] text-[#e9effa]"
                   : "text-[#a9bde0] hover:bg-[#173063] hover:text-[#e9effa]"
               )}
