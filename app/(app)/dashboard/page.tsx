@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MessageSquare, FileText, Plus, TrendingUp, Sparkles, Newspaper } from "lucide-react";
+import { MessageSquare, FileText, Plus, TrendingUp, Newspaper } from "lucide-react";
 import useAuth from "@/hooks/useAuth";
 import { RevisionBadge } from "@/components/ui/Badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -28,29 +28,19 @@ interface CAPreviewItem {
   division: "gs" | "static";
 }
 
-interface SubjectCard {
-  id: string;
-  name: string;
-  slug: string;
-  nodeType: string;
-  children: { id: string; name: string }[];
-}
-
 export default function DashboardPage() {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
-  const [subjects, setSubjects] = useState<SubjectCard[]>([]);
   const [caItems, setCaItems] = useState<CAPreviewItem[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [convRes, notesRes, syllabusRes, caRes] = await Promise.all([
+        const [convRes, notesRes, caRes] = await Promise.all([
           fetch("/api/conversations"),
           fetch("/api/notes?limit=5"),
-          fetch("/api/syllabus"),
           fetch("/api/current-affairs"),
         ]);
 
@@ -67,10 +57,6 @@ export default function DashboardPage() {
           const data = await notesRes.json();
           setNotes(data.notes || []);
         }
-        if (syllabusRes.ok) {
-          const data = await syllabusRes.json();
-          setSubjects(Array.isArray(data) ? data.filter((n: SubjectCard) => n.nodeType === "subject") : []);
-        }
       } catch {
         // Silently fail - show empty state
       } finally {
@@ -80,20 +66,6 @@ export default function DashboardPage() {
 
     fetchData();
   }, []);
-
-  const subjectColors = [
-    "bg-blue-500",
-    "bg-purple-500",
-    "bg-green-500",
-    "bg-amber-500",
-    "bg-red-500",
-    "bg-teal-500",
-    "bg-indigo-500",
-    "bg-pink-500",
-    "bg-orange-500",
-    "bg-cyan-500",
-    "bg-emerald-500",
-  ];
 
   if (loading) {
     return (
@@ -116,14 +88,14 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick actions */}
-      <div className="flex flex-wrap gap-3 mb-8">
-        <Link href="/chat">
+      <div className="flex flex-wrap items-center gap-3 mb-8">
+        <Link href="/chat" className="flex">
           <Button size="md">
             <Plus size={16} aria-hidden="true" />
             New Chat
           </Button>
         </Link>
-        <Link href="/notes">
+        <Link href="/notes" className="flex">
           <Button variant="secondary" size="md">
             <FileText size={16} aria-hidden="true" />
             Browse Notes
@@ -305,57 +277,6 @@ export default function DashboardPage() {
         <GeneralChatCard />
       </section>
 
-      {/* Subjects grid */}
-      {subjects.length > 0 && (
-        <section aria-labelledby="subjects-heading">
-          <h2
-            id="subjects-heading"
-            className="text-lg font-semibold text-gray-900 mb-4"
-          >
-            SSC CGL Syllabus Subjects
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {subjects.map((subject, i) => {
-              const chatHint = encodeURIComponent(
-                `I want to study ${subject.name} for SSC CGL. Which topics matter most, what is the best order to study them, and how should I practise for speed and accuracy in Tier-I and Tier-II?`
-              );
-              const chatSubject = encodeURIComponent(subject.name);
-              return (
-                <div
-                  key={subject.id}
-                  className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow flex flex-col gap-3"
-                >
-                  <Link href={`/notes?subjectId=${subject.id}`} className="group flex-1">
-                    <div
-                      className={`w-10 h-10 rounded-lg ${subjectColors[i % subjectColors.length]} flex items-center justify-center mb-3`}
-                      aria-hidden="true"
-                    >
-                      <span className="text-white text-lg font-bold">
-                        {subject.name.charAt(0)}
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                      {subject.name}
-                    </h3>
-                    {subject.children.length > 0 && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        {subject.children.length} sections
-                      </p>
-                    )}
-                  </Link>
-                  <Link
-                    href={`/chat?hint=${chatHint}&subject=${chatSubject}`}
-                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-100 hover:border-blue-300 bg-blue-50 hover:bg-blue-100 rounded-lg px-2.5 py-1.5 transition-colors"
-                  >
-                    <Sparkles size={11} aria-hidden="true" />
-                    Ask AI
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
@@ -374,7 +295,7 @@ function GeneralChatCard() {
   };
 
   return (
-    <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-6 text-white">
+    <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-4 sm:p-6 text-white">
       <div className="flex items-center gap-2 mb-1">
         <MessageSquare size={18} className="text-blue-400" />
         <h2 className="text-base font-semibold">General Chat</h2>
@@ -389,11 +310,11 @@ function GeneralChatCard() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && start()}
           placeholder="Ask anything…"
-          className="flex-1 bg-slate-700 text-white placeholder-slate-400 border border-slate-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="flex-1 min-w-0 bg-slate-700 text-white placeholder-slate-400 border border-slate-600 rounded-lg px-3 sm:px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         <button
           onClick={start}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
+          className="bg-blue-600 hover:bg-blue-500 text-white px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
         >
           Chat →
         </button>
