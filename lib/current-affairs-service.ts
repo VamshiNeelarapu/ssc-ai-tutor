@@ -211,10 +211,7 @@ export async function rebuildMonthlyNote(
     references: references.slice(0, 150),
   };
 
-  const [subject, section] = await Promise.all([
-    SyllabusNode.findOne({ slug: "general-awareness" }).select("_id"),
-    SyllabusNode.findOne({ slug: "general-awareness--current-affairs" }).select("_id"),
-  ]);
+  const subject = await SyllabusNode.findOne({ slug: "general-awareness" }).select("_id");
 
   const filter = { userId, kind: "current_affairs_month" as const, monthKey };
   const existed = await StudyNote.exists(filter);
@@ -225,10 +222,10 @@ export async function rebuildMonthlyNote(
       $set: {
         title,
         subjectId: subject?._id.toString(),
-        sectionId: section?._id.toString(),
         examRelevance: ["tier1", "tier2"],
         content,
       },
+      $unset: { sectionId: 1 },
     },
     { upsert: true, new: true }
   );

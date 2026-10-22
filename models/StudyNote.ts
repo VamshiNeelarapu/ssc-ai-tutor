@@ -1,7 +1,7 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
 export type RevisionStatus = "not_started" | "learning" | "needs_revision" | "revised";
-export type ExamRelevance = "tier1" | "tier2" | "ckt" | "dest" | "stats" | "finance";
+export type ExamRelevance = "tier1" | "tier2" | "ckt";
 
 export interface ICoreConcept {
   heading: string;
@@ -146,7 +146,7 @@ const StudyNoteSchema = new Schema<IStudyNote>(
     },
     examRelevance: {
       type: [String],
-      enum: ["tier1", "tier2", "ckt", "dest", "stats", "finance"],
+      enum: ["tier1", "tier2", "ckt"],
       default: ["tier1"],
     },
     content: {

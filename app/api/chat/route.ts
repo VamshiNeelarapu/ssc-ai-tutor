@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import connectToDatabase from "@/lib/db";
 import Conversation from "@/models/Conversation";
+import SyllabusNode from "@/models/SyllabusNode";
 import { requireAuth, apiError, apiSuccess, handleApiError } from "@/lib/api-utils";
 import { chat, Message, buildSubjectSystemPrompt } from "@/lib/ai";
 import { aiRateLimit } from "@/lib/rate-limit";
@@ -53,12 +54,24 @@ export async function POST(request: NextRequest) {
     } else {
       const title = message.length > 60 ? message.substring(0, 60) + "..." : message;
       createdNew = true;
+      // Remember which chapter the topic belongs to, so the AI and the suggestions stay unambiguous
+      let section: string | undefined;
+      if (topicId) {
+        try {
+          const node = await SyllabusNode.findById(topicId).select("parentId");
+          const parent = node?.parentId ? await SyllabusNode.findById(node.parentId).select("name") : null;
+          section = parent?.name;
+        } catch {
+          section = undefined;
+        }
+      }
       conversation = await Conversation.create({
         userId: session.userId,
         title,
         subject,
         topic,
         topicId,
+        section,
         messages: [],
       });
     }
@@ -72,7 +85,7 @@ export async function POST(request: NextRequest) {
     const activeSubject = subject || conversation.subject;
     const activeTopic = topic || conversation.topic;
     const aiMessages: Message[] = [
-      { role: "system", content: buildSubjectSystemPrompt(activeSubject, activeTopic) },
+      { role: "system", content: buildSubjectSystemPrompt(activeSubject, activeTopic, conversation.section) },
       ...conversation.messages.slice(-20).map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,

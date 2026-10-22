@@ -13,6 +13,7 @@ export interface IConversation extends Document {
   subject?: string;
   topic?: string;
   topicId?: string;
+  section?: string;
   messages: IMessage[];
   createdAt: Date;
   updatedAt: Date;
@@ -59,6 +60,9 @@ const ConversationSchema = new Schema<IConversation>(
       type: String,
     },
     topicId: {
+      type: String,
+    },
+    section: {
       type: String,
     },
     messages: {

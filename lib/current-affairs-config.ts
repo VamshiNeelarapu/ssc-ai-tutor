@@ -76,30 +76,3 @@ export function shortDayLabel(date: string): string {
   const d = new Date(`${date}T00:00:00Z`);
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)}`;
 }
-
-const TOPIC_CATEGORY_RULES: Array<[RegExp, string]> = [
-  [/appointment|resignation/i, "appointments"],
-  [/award|honour/i, "awards"],
-  [/sport/i, "sports"],
-  [/book|author/i, "books"],
-  [/important days|themes/i, "days"],
-  [/summit|conference/i, "summits_orgs"],
-  [/report|indices|index/i, "reports_indices"],
-  [/defence/i, "defence_security"],
-  [/space|science/i, "science_tech"],
-  [/economic/i, "economy"],
-  [/environment|climate/i, "geography_environment"],
-  [/scheme|initiative/i, "schemes_policies"],
-  [/government decision/i, "polity"],
-  [/international/i, "international"],
-];
-
-export function isCurrentAffairsSectionName(name?: string): boolean {
-  return !!name && /^current affairs$/i.test(name.trim());
-}
-
-/** Link to today's digest, filtered to the matching category when the topic maps to one. */
-export function currentAffairsLinkForTopic(topicName: string): string {
-  const rule = TOPIC_CATEGORY_RULES.find(([re]) => re.test(topicName));
-  return rule ? `/current-affairs?category=${rule[1]}` : "/current-affairs";
-}

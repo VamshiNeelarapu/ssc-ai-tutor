@@ -10,6 +10,9 @@ import {
   Folder,
   FolderOpen,
   FileText,
+  CircleDot,
+  RotateCcw,
+  CheckCircle2,
   Plus,
   Pencil,
   Trash2,
@@ -33,6 +36,26 @@ const CHILD_TYPE: Record<string, "section" | "topic" | undefined> = {
   section: "topic",
 };
 
+// Notes made -> Learning -> Needs revision -> Revised. Topics without a note show nothing.
+const STATUS_INDICATORS: Record<string, { label: string; Icon: typeof FileText; className: string }> = {
+  not_started: { label: "Notes made", Icon: FileText, className: "text-slate-300" },
+  learning: { label: "Learning", Icon: CircleDot, className: "text-sky-300" },
+  needs_revision: { label: "Needs revision", Icon: RotateCcw, className: "text-amber-400" },
+  revised: { label: "Revised", Icon: CheckCircle2, className: "text-green-400" },
+};
+
+function StatusIndicator({ status }: { status: string }) {
+  const entry = STATUS_INDICATORS[status];
+  if (!entry) return null;
+  const { Icon, label, className } = entry;
+  return (
+    <span className={clsx("flex-shrink-0", className)} title={label}>
+      <Icon size={12} aria-hidden="true" />
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
+
 interface TreeNodeProps {
   node: SyllabusTreeNode;
   depth?: number;
@@ -40,9 +63,11 @@ interface TreeNodeProps {
   onNodeSelect?: (node: SyllabusTreeNode) => void;
   editable?: boolean;
   onMutate?: () => void;
+  topicStatus?: Record<string, string>;
+  chatStarted?: Record<string, boolean>;
 }
 
-function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate }: TreeNodeProps) {
+function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate, topicStatus, chatStarted }: TreeNodeProps) {
   const hasChildren = node.children.length > 0;
   const isActive = node.id === activeId;
   const hasActiveChild = hasChildren && node.children.some((c) => c.id === activeId);
@@ -56,6 +81,13 @@ function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate 
   const inputRef = useRef<HTMLInputElement>(null);
 
   const childType = CHILD_TYPE[node.nodeType];
+
+  // Share of a chapter's topics with no chat started yet (hidden until chat data has loaded)
+  const sectionTopics = node.nodeType === "section" ? node.children.filter((c) => c.nodeType === "topic") : [];
+  const notStartedPct =
+    chatStarted && sectionTopics.length > 0
+      ? Math.round((sectionTopics.filter((t) => !chatStarted[t.id]).length / sectionTopics.length) * 100)
+      : null;
 
   const Icon =
     node.nodeType === "subject"
@@ -232,6 +264,7 @@ function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate 
                 : "border-l-2 border-transparent hover:bg-[#173063] text-[#8aa3cf] hover:text-[#e9effa]"
             )}
             style={{ paddingLeft: pl, paddingRight: "8px" }}
+            title={node.name}
             aria-expanded={hasChildren ? expanded : undefined}
             aria-current={isActive ? "page" : undefined}
           >
@@ -253,6 +286,17 @@ function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate 
               aria-hidden="true"
             />
             <span className="truncate flex-1">{node.name}</span>
+            {node.nodeType === "topic" && topicStatus?.[node.id] && (
+              <StatusIndicator status={topicStatus[node.id]} />
+            )}
+            {notStartedPct !== null && (
+              <span
+                className="flex-shrink-0 text-[11px] tabular-nums text-[#7088b3]"
+                title={`${notStartedPct}% of topics have no chat yet`}
+              >
+                {notStartedPct}%
+              </span>
+            )}
 
             {/* Hover edit controls */}
             {editable && hovered && (
@@ -294,6 +338,8 @@ function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate 
               onNodeSelect={onNodeSelect}
               editable={editable}
               onMutate={onMutate}
+              topicStatus={topicStatus}
+              chatStarted={chatStarted}
             />
           ))}
 
@@ -347,9 +393,11 @@ interface SyllabusTreeProps {
   className?: string;
   editable?: boolean;
   onMutate?: () => void;
+  topicStatus?: Record<string, string>;
+  chatStarted?: Record<string, boolean>;
 }
 
-export function SyllabusTree({ nodes, onNodeSelect, className, editable, onMutate }: SyllabusTreeProps) {
+export function SyllabusTree({ nodes, onNodeSelect, className, editable, onMutate, topicStatus, chatStarted }: SyllabusTreeProps) {
   const searchParams = useSearchParams();
   const activeId = searchParams.get("topicId") || searchParams.get("sectionId") || searchParams.get("subjectId") || "";
 
@@ -372,6 +420,8 @@ export function SyllabusTree({ nodes, onNodeSelect, className, editable, onMutat
             onNodeSelect={onNodeSelect}
             editable={editable}
             onMutate={onMutate}
+            topicStatus={topicStatus}
+            chatStarted={chatStarted}
           />
         ))}
       </ul>

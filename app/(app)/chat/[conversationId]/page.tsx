@@ -35,6 +35,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const [input, setInput] = useState("");
   const [initialLoading, setInitialLoading] = useState(true);
   const [conversationTopic, setConversationTopic] = useState<string | null>(null);
+  const [conversationSection, setConversationSection] = useState<string | null>(null);
+  const [conversationSubject, setConversationSubject] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const voice = useVoiceInput({
@@ -53,6 +55,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         }
         const data = await res.json();
         setConversationTopic(data.topic || null);
+        setConversationSection(data.section || null);
+        setConversationSubject(data.subject || null);
         setMessages(
           data.messages.map((m: ChatMsg) => ({
             role: m.role,
@@ -159,7 +163,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
                   conversationTopic ? "" : "sm:grid-cols-2"
                 }`}
               >
-                {(conversationTopic ? [topicStudyPrompt(conversationTopic)] : SAMPLE_PROMPTS).map((prompt) => (
+                {(conversationTopic ? [topicStudyPrompt(conversationTopic, conversationSection ?? undefined, conversationSubject ?? undefined)] : SAMPLE_PROMPTS).map((prompt) => (
                   <button
                     key={prompt}
                     onClick={() => {

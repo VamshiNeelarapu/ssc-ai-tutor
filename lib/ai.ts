@@ -39,10 +39,10 @@ export function createAIClient(): OpenAI {
   return aiClient;
 }
 
-export const SSC_SYSTEM_PROMPT = `You are an expert SSC (Staff Selection Commission) tutor and study assistant. Your role is to help students prepare for the SSC Combined Graduate Level (CGL) examination — Tier-I and Tier-II, including the Computer Knowledge Test (CKT), Data Entry Speed Test (DEST) and the post-specific Statistics / Finance & Economics papers where applicable.
+export const SSC_SYSTEM_PROMPT = `You are an expert SSC (Staff Selection Commission) tutor and study assistant. Your role is to help students prepare for the SSC Combined Graduate Level (CGL) examination — Tier-I and Tier-II, including the Computer Knowledge Test (CKT).
 
 ## Your Expertise
-- Tier-I and Tier-II subjects: General Intelligence & Reasoning, General Awareness, Quantitative Aptitude / Mathematical Abilities, English Comprehension / Language, Computer Knowledge, Statistics, and Finance & Economics
+- Tier-I and Tier-II subjects: General Intelligence & Reasoning, General Awareness, Quantitative Aptitude / Mathematical Abilities, English Comprehension / Language, and Computer Knowledge
 - SSC question styles: objective MCQs with four options, strong emphasis on speed and accuracy, and recurring question patterns seen in previous years
 - Explaining concepts clearly, then teaching the fastest reliable method to solve questions under time pressure
 
@@ -51,7 +51,7 @@ export const SSC_SYSTEM_PROMPT = `You are an expert SSC (Staff Selection Commiss
 2. **Worked examples**: For Quant and Reasoning, solve representative SSC-style questions step by step; for English, state the rule behind each answer
 3. **Common traps**: Point out typical mistakes (misreading, unit errors, calculation slips, near-correct distractors) and how to avoid them
 4. **Memory aids**: Offer mnemonics, tables, timelines and formula sheets for General Awareness and formulas
-5. **Exam relevance**: Mention whether a topic matters for Tier-I, Tier-II, CKT, DEST or a post-specific paper when it is clear; do not guess
+5. **Exam relevance**: Mention whether a topic matters for Tier-I, Tier-II or CKT when it is clear; do not guess
 
 ## Guardrails
 - Do NOT invent citations, source URLs, official PYQs, or question-year claims; if you are not sure a question was asked, do not present it as a PYQ
@@ -72,14 +72,14 @@ Remember: Your goal is to help students build real understanding of SSC CGL topi
 
 export const AI_MODEL = process.env.AI_MODEL || "google/gemini-2.0-flash-exp:free";
 
-export function buildSubjectSystemPrompt(subject?: string, topic?: string): string {
+export function buildSubjectSystemPrompt(subject?: string, topic?: string, section?: string): string {
   if (!subject && !topic) return SSC_SYSTEM_PROMPT;
 
   if (topic) {
     return `${SSC_SYSTEM_PROMPT}
 
 ## Topic Focus Constraint — STRICT
-This conversation is ONLY about **${topic}**${subject ? ` (under ${subject})` : ""} for SSC CGL preparation.
+This conversation is ONLY about **${topic}**${section || subject ? ` (${[section && `chapter: ${section}`, subject && `subject: ${subject}`].filter(Boolean).join(", ")})` : ""} for SSC CGL preparation.
 
 You MUST follow these rules without exception:
 1. Discuss ONLY **${topic}**. Do not explain, mention, or elaborate on any other topic — even closely related ones — unless the user explicitly asks you to compare them briefly within the context of ${topic}.
@@ -136,7 +136,7 @@ export class EmptyAIResponseError extends Error {
 export const StudyNoteContentSchema = z.object({
   title: z.string(),
   overview: z.string().optional(),
-  examRelevance: z.array(z.enum(["tier1", "tier2", "ckt", "dest", "stats", "finance"])).default(["tier1"]),
+  examRelevance: z.array(z.enum(["tier1", "tier2", "ckt"])).default(["tier1"]),
   coreConcepts: z.array(
     z.object({
       heading: z.string(),
@@ -468,7 +468,7 @@ Return ONLY a valid JSON object matching this exact schema:
 {
   "title": "string - concise but descriptive title",
   "overview": "string - comprehensive 4-6 paragraph overview covering the topic in depth. Write full paragraphs, not bullets. Cover what the concept is, why it matters for SSC CGL, the key facts or formulas, and how SSC typically tests it.",
-  "examRelevance": ["tier1"] (array drawn from: "tier1", "tier2", "ckt", "dest", "stats", "finance"),
+  "examRelevance": ["tier1"] (array drawn from: "tier1", "tier2", "ckt"),
   "coreConcepts": [{ "heading": "string", "body": "string - write 2-3 detailed paragraphs explaining this concept thoroughly. Do not use bullet points here — use full sentences and paragraphs suitable for deep study." }],
   "keyFacts": ["string - specific facts, formulas, rules or definitions that SSC questions are built on"],
   "shortcuts": ["string - fast solving methods, calculation tricks, elimination techniques or mnemonics, with when to use them"],

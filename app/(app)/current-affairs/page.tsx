@@ -9,12 +9,14 @@ import {
   BookOpen,
   History,
   FilePlus2,
-  Check,
+  ChevronLeft,
+  ChevronRight,
   CalendarDays,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CurrentAffairsPointDialog } from "@/components/CurrentAffairsPointDialog";
+import { ReviseChatDialog } from "@/components/ReviseChatDialog";
 import { CurrentAffairsTabs } from "@/components/CurrentAffairsTabs";
 import { useErrorPopup } from "@/components/ErrorPopup";
 import { readApiError, toAppError } from "@/lib/client-errors";
@@ -85,6 +87,7 @@ export default function CurrentAffairsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [dialogItem, setDialogItem] = useState<CAItem | null>(null);
+  const [reviseItem, setReviseItem] = useState<CAItem | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const autoStarted = useRef<string | null>(null);
 
@@ -250,6 +253,9 @@ export default function CurrentAffairsPage() {
   }, [digest]);
 
   const viewingToday = !!date && date === today;
+  const savedDates = [...new Set([...history.map((h) => h.date), today].filter(Boolean))].sort();
+  const prevDate = [...savedDates].reverse().find((d) => d < date);
+  const nextDate = savedDates.find((d) => d > date);
   const busy = generating || refreshing;
   const monthName = monthKey ? monthLabel(monthKey) : "monthly";
 
@@ -291,28 +297,44 @@ export default function CurrentAffairsPage() {
       </div>
 
       {/* Day picker */}
-      {history.length > 0 && (
-        <div className="flex gap-2 flex-wrap mb-5" aria-label="Saved days">
-          {[...new Set([today, ...history.map((h) => h.date)].filter(Boolean))].slice(0, 14).map((d) => {
-            const entry = history.find((h) => h.date === d);
-            const active = d === date;
-            return (
-              <button
-                key={d}
-                onClick={() => load(d)}
-                disabled={loading}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                  active
-                    ? "bg-[#1f4e9c] text-white border-[#1f4e9c]"
-                    : "border-gray-300 text-gray-600 hover:border-[#1f4e9c]"
-                }`}
-              >
-                {d === today ? "Today" : shortDayLabel(d)}
-                {entry && <span className="opacity-70"> · {entry.count}</span>}
-                {entry?.inMonthly && <Check size={10} className="inline ml-1" aria-label="In monthly notes" />}
-              </button>
-            );
-          })}
+      {date && (
+        <div className="flex items-center gap-2 flex-wrap mb-5">
+          <button
+            onClick={() => prevDate && load(prevDate)}
+            disabled={!prevDate || loading}
+            aria-label="Previous saved day"
+            title="Previous saved day"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <input
+            type="date"
+            value={date}
+            max={today || undefined}
+            onChange={(e) => {
+              if (e.target.value && isValidDateString(e.target.value)) load(e.target.value);
+            }}
+            aria-label="Choose a day"
+            className="h-9 border border-gray-300 rounded-md px-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={() => nextDate && load(nextDate)}
+            disabled={!nextDate || loading}
+            aria-label="Next saved day"
+            title="Next saved day"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+          {!viewingToday && today && (
+            <Button variant="secondary" size="sm" onClick={() => load(today)} disabled={loading}>
+              Today
+            </Button>
+          )}
+          <span className="text-xs text-gray-400">
+            {history.length} saved day{history.length === 1 ? "" : "s"} · arrows jump between them
+          </span>
         </div>
       )}
 
@@ -463,10 +485,15 @@ export default function CurrentAffairsPage() {
                         <p className="text-sm text-gray-800 leading-relaxed">{item.point}</p>
                         <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-1">
                           {item.staticLink && (
-                            <span className="inline-flex items-center gap-1 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setReviseItem(item)}
+                              className="inline-flex items-center gap-1 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 cursor-pointer"
+                              title="Revise this in a chat"
+                            >
                               <BookOpen size={11} aria-hidden="true" />
                               Revise: {item.staticLink}
-                            </span>
+                            </button>
                           )}
                           {item.sourceUrl && (
                             <a
@@ -507,6 +534,14 @@ export default function CurrentAffairsPage() {
         staticLink={dialogItem?.staticLink}
         onClose={() => setDialogItem(null)}
       />
+      {reviseItem?.staticLink && (
+        <ReviseChatDialog
+          key={reviseItem.point}
+          topic={reviseItem.staticLink}
+          point={reviseItem.point}
+          onClose={() => setReviseItem(null)}
+        />
+      )}
     </div>
   );
 }

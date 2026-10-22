@@ -43,7 +43,14 @@ export interface NoteDraft {
   suggestedSection?: string;
 }
 
-export function useChat(initialConversationId?: string, subject?: string, topic?: string, topicId?: string) {
+export function useChat(
+  initialConversationId?: string,
+  subject?: string,
+  topic?: string,
+  topicId?: string,
+  options?: { stayInPlace?: boolean }
+) {
+  const stayInPlace = !!options?.stayInPlace;
   const router = useRouter();
   const { showError } = useErrorPopup();
   const mountedRef = useRef(true);
@@ -120,7 +127,7 @@ export function useChat(initialConversationId?: string, subject?: string, topic?
 
         // Move a brand-new chat to its own URL so Back/refresh reload the saved conversation.
         // Skip if the user already navigated away while the reply was loading.
-        if (!initialConversationId && data.conversationId && mountedRef.current) {
+        if (!stayInPlace && !initialConversationId && data.conversationId && mountedRef.current) {
           router.replace(`/chat/${data.conversationId}`);
         }
         return true;
@@ -133,7 +140,7 @@ export function useChat(initialConversationId?: string, subject?: string, topic?
         setLoading(false);
       }
     },
-    [conversationId, initialConversationId, subject, topic, topicId, router, showError]
+    [conversationId, initialConversationId, subject, topic, topicId, router, showError, stayInPlace]
   );
 
   const generateDraft = useCallback(async () => {

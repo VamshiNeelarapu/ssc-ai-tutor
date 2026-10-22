@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { User, Lock, Cpu, Trash2, Plus } from "lucide-react";
+import { User, Lock, Cpu, Trash2, Plus, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuthContext } from "@/contexts/AuthContext";
 import useAuth from "@/hooks/useAuth";
 import { useCustomModels } from "@/hooks/useCustomModels";
 import { AI_MODELS, MAX_CUSTOM_MODELS } from "@/lib/models";
@@ -10,6 +12,20 @@ import Button from "@/components/ui/Button";
 
 export default function AccountPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const { logout } = useAuthContext();
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await logout();
+      router.push("/login");
+    } finally {
+      setSigningOut(false);
+    }
+  };
   const { models: customModels, loaded: modelsLoaded, addModel, removeModel } = useCustomModels();
   const [newModelId, setNewModelId] = useState("");
   const [newModelLabel, setNewModelLabel] = useState("");
@@ -306,6 +322,37 @@ export default function AccountPage() {
             Change Password
           </Button>
         </form>
+      </section>
+
+      {/* Sign out */}
+      <section
+        aria-labelledby="signout-heading"
+        className="bg-white border border-gray-200 rounded-xl p-6 mt-6"
+      >
+        <h2
+          id="signout-heading"
+          className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2"
+        >
+          <LogOut size={18} aria-hidden="true" />
+          Sign out
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">You will need to sign in again to continue studying.</p>
+        {confirmingSignOut ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-gray-700">Sign out of this device?</span>
+            <Button variant="danger" size="sm" onClick={handleSignOut} loading={signingOut}>
+              Yes, sign out
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setConfirmingSignOut(false)} disabled={signingOut}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <Button variant="secondary" onClick={() => setConfirmingSignOut(true)}>
+            <LogOut size={14} aria-hidden="true" />
+            Sign out
+          </Button>
+        )}
       </section>
     </div>
   );

@@ -6,6 +6,7 @@ import { CalendarRange, BookOpen, ExternalLink, History, FilePlus2, Check, Wand2
 import Button from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CurrentAffairsPointDialog } from "@/components/CurrentAffairsPointDialog";
+import { ReviseChatDialog } from "@/components/ReviseChatDialog";
 import { CurrentAffairsTabs } from "@/components/CurrentAffairsTabs";
 import { useErrorPopup } from "@/components/ErrorPopup";
 import { readApiError, toAppError } from "@/lib/client-errors";
@@ -63,6 +64,7 @@ export default function MonthlyCurrentAffairsPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [notice, setNotice] = useState("");
   const [dialogItem, setDialogItem] = useState<MonthItem | null>(null);
+  const [reviseItem, setReviseItem] = useState<MonthItem | null>(null);
   const [job, setJob] = useState<GenerateJob | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const shownMonthRef = useRef<string | null>(null);
@@ -441,10 +443,15 @@ export default function MonthlyCurrentAffairsPage() {
                         <p className="text-sm text-gray-800 leading-relaxed">{item.point}</p>
                         <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-1">
                           {item.staticLink && (
-                            <span className="inline-flex items-center gap-1 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setReviseItem(item)}
+                              className="inline-flex items-center gap-1 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 cursor-pointer"
+                              title="Revise this in a chat"
+                            >
                               <BookOpen size={11} aria-hidden="true" />
                               Revise: {item.staticLink}
-                            </span>
+                            </button>
                           )}
                           {item.sourceUrl && (
                             <a
@@ -481,6 +488,14 @@ export default function MonthlyCurrentAffairsPage() {
         staticLink={dialogItem?.staticLink}
         onClose={() => setDialogItem(null)}
       />
+      {reviseItem?.staticLink && (
+        <ReviseChatDialog
+          key={reviseItem.point}
+          topic={reviseItem.staticLink}
+          point={reviseItem.point}
+          onClose={() => setReviseItem(null)}
+        />
+      )}
     </div>
   );
 }

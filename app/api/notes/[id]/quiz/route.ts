@@ -61,7 +61,7 @@ export async function POST(
       workedExamples: note.content.workedExamples,
       pyqs: [],
       references: note.content.references,
-      examRelevance: note.examRelevance as ("tier1" | "tier2" | "ckt" | "dest" | "stats" | "finance")[],
+      examRelevance: note.examRelevance as ("tier1" | "tier2" | "ckt")[],
     };
 
     try {

@@ -1,4 +1,4 @@
-// Regenerates lib/ssc-syllabus-data.ts from docs/ssc-breakdown.md (Parts II-IV: subjects 4-15).
+// Regenerates lib/ssc-syllabus-data.ts from docs/ssc-breakdown.md (Parts II-III: subjects 4-12).
 // Usage: node scripts/generate-syllabus.js
 const fs = require("fs");
 const path = require("path");
@@ -16,9 +16,6 @@ const SUBJECT_NAMES = {
   10: "English Language & Comprehension (Tier-II)",
   11: "General Awareness (Tier-II)",
   12: "Computer Knowledge Test (CKT)",
-  13: "Data Entry Speed Test (DEST)",
-  14: "Paper-II: Statistics",
-  15: "Paper-III: Finance & Economics",
 };
 
 // Flat subjects have no "## x.y" headings; their checklist goes under one synthetic section.
@@ -27,8 +24,10 @@ const FLAT_SECTION_NAMES = {
   9: "Tier-II Reasoning checklist",
   10: "Tier-II English checklist",
   11: "Tier-II General Awareness checklist",
-  13: "DEST preparation checklist",
 };
+
+// Display-name overrides. The slug keeps coming from the original title so existing links stay stable.
+const SECTION_RENAMES = { "Current affairs": "Static GK" };
 
 function toSlug(name) {
   return name
@@ -89,7 +88,7 @@ for (const raw of lines) {
       continue;
     }
     section = {
-      name: title,
+      name: SECTION_RENAMES[title] ?? title,
       slug: `${subject.slug}--${toSlug(title)}`,
       nodeType: "section",
       children: [],

@@ -10,7 +10,7 @@ const CreateNoteSchema = z.object({
   sectionId: z.string().optional(),
   topicId: z.string().optional(),
   examRelevance: z
-    .array(z.enum(["tier1", "tier2", "ckt", "dest", "stats", "finance"]))
+    .array(z.enum(["tier1", "tier2", "ckt"]))
     .default(["tier1"]),
   content: z.object({
     overview: z.string().optional(),

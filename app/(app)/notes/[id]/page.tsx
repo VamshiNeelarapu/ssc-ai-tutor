@@ -114,6 +114,7 @@ export default function NoteDetailPage({
         setNote((prev) =>
           prev ? { ...prev, revisionStatus: data.revisionStatus } : null
         );
+        window.dispatchEvent(new Event("notes:changed"));
       }
     } catch {
       // Silently fail

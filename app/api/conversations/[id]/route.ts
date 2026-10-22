@@ -27,6 +27,7 @@ export async function GET(
       topicHint: conversation.topicHint,
       subject: conversation.subject,
       topic: conversation.topic,
+      section: conversation.section,
       topicId: conversation.topicId,
       messages: conversation.messages,
       updatedAt: conversation.updatedAt,
