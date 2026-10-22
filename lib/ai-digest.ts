@@ -136,7 +136,7 @@ export async function generateCurrentAffairsPoints(
   ];
 
   const primary = model || AI_MODEL;
-  const modelsToTry = [primary, ...AI_MODELS.map((m) => m.id).filter((id) => id !== primary)];
+  const modelsToTry = [primary, ...AI_MODELS.filter((m) => !m.paid).map((m) => m.id).filter((id) => id !== primary)];
 
   let lastReason = "no model produced a response";
   for (let i = 0; i < modelsToTry.length; i++) {

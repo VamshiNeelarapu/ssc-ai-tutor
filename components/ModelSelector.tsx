@@ -62,6 +62,10 @@ export default function ModelSelector() {
           <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
             Custom
           </span>
+        ) : builtIn?.paid ? (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-700">
+            Paid
+          </span>
         ) : (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700">
             Free
@@ -105,9 +109,15 @@ export default function ModelSelector() {
                       <span className={`text-xs font-medium ${selectedId === model.id ? "text-[#1f4e9c]" : "text-gray-800"}`}>
                         {model.label}
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700">
-                        Free
-                      </span>
+                      {model.paid ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-700">
+                          Paid
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700">
+                          Free
+                        </span>
+                      )}
                       {model.dailyLimit && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700 flex items-center gap-0.5">
                           <Clock size={9} />

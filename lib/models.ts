@@ -4,6 +4,7 @@ export interface AIModel {
   badge: string;
   description: string;
   dailyLimit: boolean; // true = has daily rate limit (free tier)
+  paid?: boolean; // billed per use; never used as an automatic fallback
 }
 
 export const AI_MODELS: AIModel[] = [
@@ -15,24 +16,10 @@ export const AI_MODELS: AIModel[] = [
     dailyLimit: true,
   },
   {
-    id: "google/gemma-4-31b-it:free",
-    label: "Gemma 4 31B",
-    badge: "Free",
-    description: "Google's latest open model — solid all-rounder",
-    dailyLimit: true,
-  },
-  {
     id: "nvidia/nemotron-3.5-lightning:free",
     label: "Nemotron Lightning",
     badge: "Free",
     description: "NVIDIA fast model — good for quick Q&A",
-    dailyLimit: true,
-  },
-  {
-    id: "qwen/qwen3.8-27b:free",
-    label: "Qwen 3.8 27B",
-    badge: "Free",
-    description: "Alibaba's capable reasoning model",
     dailyLimit: true,
   },
   {
@@ -41,6 +28,54 @@ export const AI_MODELS: AIModel[] = [
     badge: "Free",
     description: "Poolside's instruction-tuned model",
     dailyLimit: true,
+  },
+  {
+    id: "deepseek/deepseek-v4-flash-0731",
+    label: "DeepSeek V4 Flash",
+    badge: "Paid",
+    description: "Fixed snapshot, best value — about 4,000 chats per $1",
+    dailyLimit: false,
+    paid: true,
+  },
+  {
+    id: "deepseek/deepseek-v4.1-flash-1017",
+    label: "DeepSeek V4.1 Flash",
+    badge: "Paid",
+    description: "Newest DeepSeek flash model — about 1,100 chats per $1",
+    dailyLimit: false,
+    paid: true,
+  },
+  {
+    id: "openai/gpt-5-nano",
+    label: "GPT-5 Nano",
+    badge: "Paid",
+    description: "OpenAI's smallest GPT-5 — about 2,000 chats per $1",
+    dailyLimit: false,
+    paid: true,
+  },
+  {
+    id: "openai/gpt-4.1-nano",
+    label: "GPT-4.1 Nano",
+    badge: "Paid",
+    description: "OpenAI, answers straight away without a thinking delay — about 1,600 chats per $1",
+    dailyLimit: false,
+    paid: true,
+  },
+  {
+    id: "openai/gpt-4o-mini",
+    label: "GPT-4o mini",
+    badge: "Paid",
+    description: "OpenAI's dependable all-rounder — about 1,100 chats per $1",
+    dailyLimit: false,
+    paid: true,
+  },
+  {
+    id: "google/gemini-2.5-flash-lite",
+    label: "Gemini 2.5 Flash-Lite",
+    badge: "Paid",
+    description: "Google's budget model with a very large context — about 1,600 chats per $1",
+    dailyLimit: false,
+    paid: true,
   },
 ];
 

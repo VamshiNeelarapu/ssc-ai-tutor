@@ -9,6 +9,7 @@ import { useCustomModels } from "@/hooks/useCustomModels";
 import { AI_MODELS, MAX_CUSTOM_MODELS } from "@/lib/models";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import { OpenRouterBalance } from "@/components/OpenRouterBalance";
 
 export default function AccountPage() {
   const { user } = useAuth();
@@ -163,6 +164,8 @@ export default function AccountPage() {
           models use your provider credits.
         </p>
 
+        <OpenRouterBalance />
+
         <div className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
             Built-in
@@ -170,7 +173,16 @@ export default function AccountPage() {
           <ul className="space-y-1">
             {AI_MODELS.map((m) => (
               <li key={m.id} className="flex items-center justify-between text-sm">
-                <span className="text-gray-800">{m.label}</span>
+                <span className="text-gray-800">
+                  {m.label}
+                  <span
+                    className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                      m.paid ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
+                    {m.paid ? "Paid" : "Free"}
+                  </span>
+                </span>
                 <span className="text-xs text-gray-400 truncate ml-3">{m.id}</span>
               </li>
             ))}

@@ -511,7 +511,7 @@ ${topicFocus ? `STRICT REQUIREMENT: This note is ONLY about "${topicFocus}". Do 
   const primaryModel = model || AI_MODEL;
   const modelsToTry = [
     primaryModel,
-    ...AI_MODELS.map((m) => m.id).filter((id) => id !== primaryModel),
+    ...AI_MODELS.filter((m) => !m.paid).map((m) => m.id).filter((id) => id !== primaryModel),
   ];
 
   const requestMessages = [
