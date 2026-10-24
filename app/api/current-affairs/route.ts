@@ -39,25 +39,25 @@ export async function GET(request: NextRequest) {
 
     const monthKey = monthKeyOf(requested);
     const [digest, history, monthly] = await Promise.all([
-      CurrentAffairsDigest.findOne({ userId: session.userId, date: requested }),
-      CurrentAffairsDigest.find({ userId: session.userId })
+      CurrentAffairsDigest.findOne({ date: requested }),
+      CurrentAffairsDigest.find({})
         .sort({ date: -1 })
         .limit(45)
-        .select("date inMonthly items.point"),
+        .select("date savedBy items.point"),
       getMonthlyNoteSummary(session.userId, monthKey),
     ]);
 
     return apiSuccess({
       today,
       date: requested,
-      digest: digest ? serializeDigest(digest) : null,
+      digest: digest ? serializeDigest(digest, session.userId) : null,
       monthKey,
       monthLabel: monthLabel(monthKey),
       monthly,
       history: history.map((h) => ({
         date: h.date,
         count: h.items.length,
-        inMonthly: h.inMonthly,
+        inMonthly: (h.savedBy ?? []).includes(session.userId),
       })),
     });
   } catch (error) {
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         refresh,
       });
       const monthly = await getMonthlyNoteSummary(session.userId, digest.monthKey);
-      return apiSuccess({ digest: serializeDigest(digest), newCount, status, monthly });
+      return apiSuccess({ digest: serializeDigest(digest, session.userId), newCount, status, monthly });
     } catch (err) {
       console.error("Current affairs generation error:", err);
       return aiErrorResponse(err, model);

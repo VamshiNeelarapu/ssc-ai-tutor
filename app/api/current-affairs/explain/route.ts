@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import { z } from "zod";
 import connectToDatabase from "@/lib/db";
 import CurrentAffairsExplanation from "@/models/CurrentAffairsExplanation";
+import ImportantPoint from "@/models/ImportantPoint";
 import { requireAuth, apiError, apiSuccess, handleApiError } from "@/lib/api-utils";
 import { aiRateLimit } from "@/lib/rate-limit";
 import { aiErrorResponse, aiNotConfiguredResponse, aiRateLimitResponse } from "@/lib/ai-errors";
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
 
     if (!regenerate) {
-      const cached = await CurrentAffairsExplanation.findOne({ userId: session.userId, key });
+      const cached = await CurrentAffairsExplanation.findOne({ key });
       if (cached) return apiSuccess({ content: cached.content, cached: true });
     }
 
@@ -39,10 +40,11 @@ export async function POST(request: NextRequest) {
     try {
       const content = await explainCurrentAffairsPoint(point, staticLink, model);
       await CurrentAffairsExplanation.findOneAndUpdate(
-        { userId: session.userId, key },
-        { $set: { point, content, aiModel: model } },
+        { key },
+        { $set: { point, content, aiModel: model }, $setOnInsert: { generatedBy: session.userId } },
         { upsert: true }
       );
+      await ImportantPoint.updateMany({ key }, { $set: { background: content } });
       return apiSuccess({ content, cached: false });
     } catch (err) {
       console.error("Current affairs explain error:", err);

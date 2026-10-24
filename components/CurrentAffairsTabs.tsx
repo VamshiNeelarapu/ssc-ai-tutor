@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { clsx } from "clsx";
 
-export function CurrentAffairsTabs({ active }: { active: "daily" | "monthly" }) {
+export function CurrentAffairsTabs({ active }: { active: "daily" | "monthly" | "important" }) {
   const tabs = [
     { id: "daily", label: "Daily", href: "/current-affairs" },
     { id: "monthly", label: "Monthly", href: "/current-affairs/monthly" },
+    { id: "important", label: "Important", href: "/current-affairs/important" },
   ] as const;
 
   return (

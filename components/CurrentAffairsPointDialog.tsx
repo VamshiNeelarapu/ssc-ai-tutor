@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { X, RefreshCw, MessageSquare } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { BackgroundMarkdown } from "@/components/BackgroundMarkdown";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useErrorPopup } from "@/components/ErrorPopup";
 import { readApiError, toAppError } from "@/lib/client-errors";
@@ -110,20 +109,7 @@ export function CurrentAffairsPointDialog({ point, staticLink, onClose }: Curren
             </div>
           ) : content ? (
             <div className="text-sm text-gray-800 leading-relaxed">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h3: ({ children }) => (
-                    <h3 className="text-sm font-bold text-gray-900 mt-4 mb-1.5 first:mt-0">{children}</h3>
-                  ),
-                  p: ({ children }) => <p className="mb-2">{children}</p>,
-                  ul: ({ children }) => <ul className="list-disc ml-5 mb-2 space-y-1">{children}</ul>,
-                  ol: ({ children }) => <ol className="list-decimal ml-5 mb-2 space-y-1">{children}</ol>,
-                  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                }}
-              >
-                {content}
-              </ReactMarkdown>
+              <BackgroundMarkdown content={content} />
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-4">
                 Written by AI from general knowledge. It cannot see today&apos;s news, so check dates and figures
                 against the source link before relying on them.

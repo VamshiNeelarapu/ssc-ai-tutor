@@ -8,6 +8,7 @@ import {
   ExternalLink,
   BookOpen,
   History,
+  Star,
   FilePlus2,
   ChevronLeft,
   ChevronRight,
@@ -16,6 +17,7 @@ import {
 import Button from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CurrentAffairsPointDialog } from "@/components/CurrentAffairsPointDialog";
+import { useImportantPoints } from "@/hooks/useImportantPoints";
 import { ReviseChatDialog } from "@/components/ReviseChatDialog";
 import { CurrentAffairsTabs } from "@/components/CurrentAffairsTabs";
 import { useErrorPopup } from "@/components/ErrorPopup";
@@ -72,6 +74,7 @@ const AUTO_REFRESH_MS = 20 * 60 * 1000;
 
 export default function CurrentAffairsPage() {
   const { showError } = useErrorPopup();
+  const important = useImportantPoints();
 
   const [today, setToday] = useState("");
   const [date, setDate] = useState("");
@@ -173,7 +176,9 @@ export default function CurrentAffairsPage() {
           return [entry, ...prev.filter((h) => h.date !== entry.date)];
         });
 
-        if (data.status === "no_new") setNotice("No new stories since your last refresh.");
+        if (data.status === "no_new") setNotice("No new stories since the last check.");
+        else if (data.status === "recent")
+          setNotice("Someone checked for new stories a few minutes ago, so this list is up to date. Try again shortly.");
         else if (data.status === "updated")
           setNotice(`${data.newCount} new point${data.newCount === 1 ? "" : "s"} added.`);
         else if (data.status === "created")
@@ -507,6 +512,18 @@ export default function CurrentAffairsPage() {
                               {item.sourcePublisher || "Source"}
                             </a>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => important.toggle(item, digest?.date ?? date)}
+                            aria-pressed={important.isMarked(item.point)}
+                            title={important.isMarked(item.point) ? "Remove from Important" : "Mark as important"}
+                            className={`inline-flex items-center gap-1 text-xs font-medium hover:underline ${
+                              important.isMarked(item.point) ? "text-amber-600" : "text-gray-500"
+                            }`}
+                          >
+                            <Star size={11} className={important.isMarked(item.point) ? "fill-amber-400 text-amber-500" : ""} aria-hidden="true" />
+                            {important.isMarked(item.point) ? "Important" : "Mark important"}
+                          </button>
                           <button
                             onClick={() => setDialogItem(item)}
                             className="inline-flex items-center gap-1 text-xs font-medium text-[#1f4e9c] hover:underline"

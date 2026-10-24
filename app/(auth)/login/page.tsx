@@ -61,9 +61,7 @@ export default function LoginPage() {
           placeholder="••••••••"
           required
           autoComplete="current-password"
-        />
-
-        <Button
+        />        <Button
           type="submit"
           className="w-full"
           loading={loading}

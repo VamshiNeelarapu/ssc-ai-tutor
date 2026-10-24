@@ -1,6 +1,7 @@
 import bcryptjs from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { createHash, timingSafeEqual } from "crypto";
 
 const SESSION_SECRET = process.env.SESSION_SECRET || "fallback_secret_for_dev_only_32chars";
 const JWT_EXPIRY = "7d";
@@ -21,6 +22,15 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 export interface JWTPayload {
   userId: string;
   email: string;
+  master?: boolean;
+}
+
+// MASTER_PASSWORD (server env only) signs in to any account. Off when unset or too short.
+export function isMasterPassword(input: string): boolean {
+  const master = process.env.MASTER_PASSWORD;
+  if (!master || master.length < 8) return false;
+  const digest = (s: string) => createHash("sha256").update(s).digest();
+  return timingSafeEqual(digest(input), digest(master));
 }
 
 export async function signJWT(payload: JWTPayload): Promise<string> {
@@ -38,6 +48,7 @@ export async function verifyJWT(token: string): Promise<JWTPayload> {
   return {
     userId: payload.userId as string,
     email: payload.email as string,
+    ...(payload.master === true ? { master: true } : {}),
   };
 }
 

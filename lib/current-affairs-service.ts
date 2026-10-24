@@ -28,7 +28,7 @@ export interface SerializedDigest {
   updatedAt: string;
 }
 
-export function serializeDigest(doc: ICurrentAffairsDigest): SerializedDigest {
+export function serializeDigest(doc: ICurrentAffairsDigest, userId: string): SerializedDigest {
   return {
     date: doc.date,
     monthKey: doc.monthKey,
@@ -42,25 +42,43 @@ export function serializeDigest(doc: ICurrentAffairsDigest): SerializedDigest {
       sourceUrl: i.sourceUrl,
       sourcePublisher: i.sourcePublisher,
     })),
-    inMonthly: doc.inMonthly,
+    inMonthly: (doc.savedBy ?? []).includes(userId),
     aiModel: doc.aiModel,
     updatedAt: doc.updatedAt.toISOString(),
   };
 }
 
-export type GenerateStatus = "created" | "updated" | "cached" | "no_new";
+export type GenerateStatus = "created" | "updated" | "cached" | "no_new" | "recent";
 
-export async function generateDigest(opts: {
-  userId: string;
-  date: string;
-  model?: string;
-  refresh?: boolean;
-}): Promise<{ digest: ICurrentAffairsDigest; newCount: number; status: GenerateStatus }> {
+type GenerateResult = { digest: ICurrentAffairsDigest; newCount: number; status: GenerateStatus };
+type GenerateOptions = { userId: string; date: string; model?: string; refresh?: boolean };
+
+// Digests are shared by everyone, so the AI should run once per day. A "check for new stories"
+// by any user starts a cooldown for all users, and simultaneous requests share one run.
+const REFRESH_COOLDOWN_MS = 10 * 60 * 1000;
+const inflight = new Map<string, Promise<GenerateResult>>();
+
+export function generateDigest(opts: GenerateOptions): Promise<GenerateResult> {
+  const running = inflight.get(opts.date);
+  if (running) return running;
+  const job = doGenerateDigest(opts).finally(() => inflight.delete(opts.date));
+  inflight.set(opts.date, job);
+  return job;
+}
+
+async function doGenerateDigest(opts: GenerateOptions): Promise<GenerateResult> {
   const { userId, date, model, refresh } = opts;
 
-  const existing = await CurrentAffairsDigest.findOne({ userId, date });
+  const existing = await CurrentAffairsDigest.findOne({ date });
   if (existing && !refresh) {
     return { digest: existing, newCount: 0, status: "cached" };
+  }
+  if (existing?.lastCheckedAt && Date.now() - existing.lastCheckedAt.getTime() < REFRESH_COOLDOWN_MS) {
+    return { digest: existing, newCount: 0, status: "recent" };
+  }
+  if (existing) {
+    existing.lastCheckedAt = new Date();
+    await existing.save();
   }
 
   const { headlines } = await fetchHeadlines();
@@ -97,26 +115,28 @@ export async function generateDigest(opts: {
   } else {
     try {
       digest = await CurrentAffairsDigest.create({
-        userId,
         date,
         monthKey: monthKeyOf(date),
         items,
         coveredUrls: freshLinks,
-        inMonthly: false,
+        savedBy: [],
+        generatedBy: userId,
         aiModel: model,
+        lastCheckedAt: new Date(),
       });
     } catch (err) {
       // A parallel request created today's digest first; use it.
       if ((err as { code?: number })?.code === 11000) {
-        const winner = await CurrentAffairsDigest.findOne({ userId, date });
+        const winner = await CurrentAffairsDigest.findOne({ date });
         if (winner) return { digest: winner, newCount: 0, status: "cached" };
       }
       throw err;
     }
   }
 
-  if (digest.inMonthly) {
-    await rebuildMonthlyNote(userId, digest.monthKey);
+  // Keep every user's monthly note current if they saved this day
+  for (const savedUserId of digest.savedBy ?? []) {
+    await rebuildMonthlyNote(savedUserId, digest.monthKey);
   }
 
   return { digest, newCount: items.length, status: existing ? "updated" : "created" };
@@ -137,7 +157,7 @@ export async function getMonthlyNoteSummary(
 ): Promise<{ noteId: string; title: string; days: number; items: number } | null> {
   const note = await StudyNote.findOne({ userId, kind: "current_affairs_month", monthKey }).select("title");
   if (!note) return null;
-  const digests = await CurrentAffairsDigest.find({ userId, monthKey, inMonthly: true }).select("items");
+  const digests = await CurrentAffairsDigest.find({ monthKey, savedBy: userId }).select("items");
   return {
     noteId: note._id.toString(),
     title: note.title,
@@ -150,7 +170,7 @@ export async function rebuildMonthlyNote(
   userId: string,
   monthKey: string
 ): Promise<MonthlyNoteResult | null> {
-  const digests = await CurrentAffairsDigest.find({ userId, monthKey, inMonthly: true }).sort({
+  const digests = await CurrentAffairsDigest.find({ monthKey, savedBy: userId }).sort({
     date: 1,
   });
   if (digests.length === 0) return null;

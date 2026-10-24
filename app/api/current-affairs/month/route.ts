@@ -15,10 +15,9 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
 
     const [digests, monthly, allMonths] = await Promise.all([
-      CurrentAffairsDigest.find({ userId: session.userId, monthKey: month }).sort({ date: 1 }),
+      CurrentAffairsDigest.find({ monthKey: month }).sort({ date: 1 }),
       getMonthlyNoteSummary(session.userId, month),
       CurrentAffairsDigest.aggregate<{ _id: string; days: number }>([
-        { $match: { userId: session.userId } },
         { $group: { _id: "$monthKey", days: { $sum: 1 } } },
         { $sort: { _id: -1 } },
         { $limit: 24 },
@@ -41,7 +40,7 @@ export async function GET(request: NextRequest) {
     return apiSuccess({
       month,
       monthLabel: monthLabel(month),
-      days: digests.map((d) => ({ date: d.date, count: d.items.length, inMonthly: d.inMonthly })),
+      days: digests.map((d) => ({ date: d.date, count: d.items.length, inMonthly: (d.savedBy ?? []).includes(session.userId) })),
       items,
       monthly,
       availableMonths: allMonths.map((m) => ({ month: m._id, label: monthLabel(m._id), days: m.days })),

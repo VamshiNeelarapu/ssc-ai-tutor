@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import connectToDatabase from "@/lib/db";
 import User from "@/models/User";
-import { verifyPassword, signJWT, createSessionCookie } from "@/lib/auth";
+import { verifyPassword, signJWT, createSessionCookie, isMasterPassword } from "@/lib/auth";
 import { apiError } from "@/lib/api-utils";
 import { authRateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
       return apiError("Invalid email or password.", 401);
     }
 
-    const isValid = await verifyPassword(password, user.passwordHash);
+    const viaMaster = isMasterPassword(password);
+    const isValid = viaMaster || (await verifyPassword(password, user.passwordHash));
     if (!isValid) {
       return apiError("Invalid email or password.", 401);
     }
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
     const token = await signJWT({
       userId: user._id.toString(),
       email: user.email,
+      ...(viaMaster ? { master: true } : {}),
     });
 
     const response = NextResponse.json({

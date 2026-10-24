@@ -11,14 +11,17 @@ export interface ICurrentAffairsItem {
   sourcePublisher?: string;
 }
 
+// One digest per calendar day, shared by every user so the AI only has to run once.
 export interface ICurrentAffairsDigest extends Document {
-  userId: string;
   date: string;
   monthKey: string;
   items: ICurrentAffairsItem[];
   coveredUrls: string[];
-  inMonthly: boolean;
+  /** Users who added this day to their own monthly note. */
+  savedBy: string[];
+  generatedBy?: string;
   aiModel?: string;
+  lastCheckedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,19 +41,20 @@ const ItemSchema = new Schema<ICurrentAffairsItem>(
 
 const CurrentAffairsDigestSchema = new Schema<ICurrentAffairsDigest>(
   {
-    userId: { type: String, required: true },
     date: { type: String, required: true },
     monthKey: { type: String, required: true },
     items: { type: [ItemSchema], default: [] },
     coveredUrls: { type: [String], default: [] },
-    inMonthly: { type: Boolean, default: false },
+    savedBy: { type: [String], default: [] },
+    generatedBy: { type: String },
     aiModel: { type: String },
+    lastCheckedAt: { type: Date },
   },
   { timestamps: true }
 );
 
-CurrentAffairsDigestSchema.index({ userId: 1, date: 1 }, { unique: true });
-CurrentAffairsDigestSchema.index({ userId: 1, monthKey: 1 });
+CurrentAffairsDigestSchema.index({ date: 1 }, { unique: true });
+CurrentAffairsDigestSchema.index({ monthKey: 1 });
 
 const CurrentAffairsDigest: Model<ICurrentAffairsDigest> =
   mongoose.models.CurrentAffairsDigest ||

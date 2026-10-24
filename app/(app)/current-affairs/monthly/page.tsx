@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CalendarRange, BookOpen, ExternalLink, History, FilePlus2, Check, Wand2 } from "lucide-react";
+import { CalendarRange, BookOpen, ExternalLink, History, Star, FilePlus2, Check, Wand2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CurrentAffairsPointDialog } from "@/components/CurrentAffairsPointDialog";
+import { useImportantPoints } from "@/hooks/useImportantPoints";
 import { ReviseChatDialog } from "@/components/ReviseChatDialog";
 import { CurrentAffairsTabs } from "@/components/CurrentAffairsTabs";
 import { useErrorPopup } from "@/components/ErrorPopup";
@@ -55,6 +56,7 @@ interface GenerateJob {
 
 export default function MonthlyCurrentAffairsPage() {
   const { showError } = useErrorPopup();
+  const important = useImportantPoints();
   const currentMonth = monthKeyOf(istDateString());
 
   const [pending, setPending] = useState(currentMonth);
@@ -465,6 +467,18 @@ export default function MonthlyCurrentAffairsPage() {
                               {item.sourcePublisher || "Source"}
                             </a>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => important.toggle(item, item.date)}
+                            aria-pressed={important.isMarked(item.point)}
+                            title={important.isMarked(item.point) ? "Remove from Important" : "Mark as important"}
+                            className={`inline-flex items-center gap-1 text-xs font-medium hover:underline ${
+                              important.isMarked(item.point) ? "text-amber-600" : "text-gray-500"
+                            }`}
+                          >
+                            <Star size={11} className={important.isMarked(item.point) ? "fill-amber-400 text-amber-500" : ""} aria-hidden="true" />
+                            {important.isMarked(item.point) ? "Important" : "Mark important"}
+                          </button>
                           <button
                             onClick={() => setDialogItem(item)}
                             className="inline-flex items-center gap-1 text-xs font-medium text-[#1f4e9c] hover:underline"

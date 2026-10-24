@@ -79,15 +79,19 @@ export default function AccountPage() {
 
     setChangingPassword(true);
     try {
-      // Password change endpoint would go here
-      // For MVP, we show a success message without implementing it
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to change password.");
       setPasswordSuccess("Password changed successfully.");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch {
-      setPasswordError("Failed to change password. Please try again.");
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : "Failed to change password. Please try again.");
     } finally {
       setChangingPassword(false);
     }
@@ -298,14 +302,16 @@ export default function AccountPage() {
             </div>
           )}
 
-          <Input
-            label="Current password"
-            type="password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
+          {!user?.viaMaster && (
+            <Input
+              label="Current password"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          )}
 
           <Input
             label="New password"
@@ -329,7 +335,7 @@ export default function AccountPage() {
           <Button
             type="submit"
             loading={changingPassword}
-            disabled={!currentPassword || !newPassword || !confirmPassword}
+            disabled={(!user?.viaMaster && !currentPassword) || !newPassword || !confirmPassword}
           >
             Change Password
           </Button>

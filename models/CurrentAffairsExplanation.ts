@@ -1,10 +1,11 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
+// Shared by every user: a background is generated once per point.
 export interface ICurrentAffairsExplanation extends Document {
-  userId: string;
   key: string;
   point: string;
   content: string;
+  generatedBy?: string;
   aiModel?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -12,16 +13,16 @@ export interface ICurrentAffairsExplanation extends Document {
 
 const CurrentAffairsExplanationSchema = new Schema<ICurrentAffairsExplanation>(
   {
-    userId: { type: String, required: true },
     key: { type: String, required: true },
     point: { type: String, required: true },
     content: { type: String, required: true },
+    generatedBy: { type: String },
     aiModel: { type: String },
   },
   { timestamps: true }
 );
 
-CurrentAffairsExplanationSchema.index({ userId: 1, key: 1 }, { unique: true });
+CurrentAffairsExplanationSchema.index({ key: 1 }, { unique: true });
 
 const CurrentAffairsExplanation: Model<ICurrentAffairsExplanation> =
   mongoose.models.CurrentAffairsExplanation ||

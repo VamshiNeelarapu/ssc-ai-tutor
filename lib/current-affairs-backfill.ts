@@ -24,7 +24,11 @@ const globalStore = globalThis as unknown as { __caBackfillJobs?: Map<string, Ba
 const jobs: Map<string, BackfillJob> = globalStore.__caBackfillJobs ?? new Map();
 globalStore.__caBackfillJobs = jobs;
 
-const jobKey = (userId: string, month: string) => `${userId}:${month}`;
+// One backfill per month for everyone: the result is shared, so nobody should pay twice.
+const jobKey = (userId: string, month: string) => {
+  void userId;
+  return month;
+};
 
 function publicError(err: unknown, model?: string): Omit<AIErrorPayload, "status"> {
   const { status, ...payload } = classifyAIError(err, model);
@@ -78,7 +82,6 @@ async function processWindow(
 ): Promise<{ hadHeadlines: boolean; failures: string[] }> {
   // Days that already have a saved digest are kept exactly as they are
   const saved = await CurrentAffairsDigest.find({
-    userId,
     monthKey: month,
     date: { $gte: window.start, $lte: window.end },
     "items.0": { $exists: true },
@@ -121,20 +124,21 @@ async function processWindow(
   for (const [day, items] of byDate) {
     const covered = linksByDate.get(day) ?? [];
     try {
-      const doc = await CurrentAffairsDigest.findOne({ userId, date: day });
+      const doc = await CurrentAffairsDigest.findOne({ date: day });
       if (doc) {
         doc.items.push(...items);
         doc.coveredUrls.push(...covered);
         await doc.save();
       } else {
         await CurrentAffairsDigest.create({
-          userId,
           date: day,
           monthKey: month,
           items,
           coveredUrls: covered,
-          inMonthly: false,
+          savedBy: [],
+          generatedBy: userId,
           aiModel: model,
+          lastCheckedAt: new Date(),
         });
       }
     } catch (err) {
@@ -191,7 +195,7 @@ async function runBackfill(
   }
 
   if (!anyHeadlines && touched.size === 0) {
-    const savedAny = await CurrentAffairsDigest.exists({ userId, monthKey: month });
+    const savedAny = await CurrentAffairsDigest.exists({ monthKey: month });
     if (!savedAny) {
       job.state = "error";
       job.error = publicError(

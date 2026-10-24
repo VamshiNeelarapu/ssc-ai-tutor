@@ -29,25 +29,22 @@ export async function POST(request: NextRequest) {
 
     if (month) {
       // Save every saved day of the month into that month's note
-      const digests = await CurrentAffairsDigest.find({ userId: session.userId, monthKey: month });
+      const digests = await CurrentAffairsDigest.find({ monthKey: month });
       const withItems = digests.filter((d) => d.items.length > 0);
       if (withItems.length === 0) {
         return apiError("There are no current affairs saved for that month yet.", 404);
       }
       await CurrentAffairsDigest.updateMany(
-        { userId: session.userId, monthKey: month, "items.0": { $exists: true } },
-        { $set: { inMonthly: true } }
+        { monthKey: month, "items.0": { $exists: true } },
+        { $addToSet: { savedBy: session.userId } }
       );
       monthKey = month;
     } else {
-      const digest = await CurrentAffairsDigest.findOne({ userId: session.userId, date });
+      const digest = await CurrentAffairsDigest.findOne({ date });
       if (!digest || digest.items.length === 0) {
         return apiError("There are no current affairs saved for that day yet.", 404);
       }
-      if (!digest.inMonthly) {
-        digest.inMonthly = true;
-        await digest.save();
-      }
+      await CurrentAffairsDigest.updateOne({ date }, { $addToSet: { savedBy: session.userId } });
       monthKey = digest.monthKey;
     }
 
