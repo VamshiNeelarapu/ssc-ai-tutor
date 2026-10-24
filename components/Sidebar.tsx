@@ -14,12 +14,14 @@ import {
   FileText,
   User,
   Plus,
+  Trash2,
   ChevronDown,
   ChevronRight,
   X,
 } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { SyllabusTree } from "./SyllabusTree";
+import { useConversationDelete } from "@/hooks/useConversationDelete";
 import type { SyllabusTreeNode } from "./SyllabusTree";
 
 interface Conversation {
@@ -43,6 +45,10 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const [chatStarted, setChatStarted] = useState<Record<string, boolean> | undefined>(undefined);
   const [syllabusOpen, setSyllabusOpen] = useState(true);
   const [conversationsOpen, setConversationsOpen] = useState(false);
+  const { requestDelete, dialog: deleteDialog } = useConversationDelete((id) => {
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    if (pathname === `/chat/${id}`) router.push("/chat");
+  });
 
   const fetchConversations = () => {
     fetch("/api/conversations")
@@ -184,18 +190,31 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                 <p className="text-xs text-[#7088b3] px-2 py-2">No conversations yet</p>
               ) : (
                 conversations.map((conv) => (
-                  <Link
+                  <div
                     key={conv.id}
-                    href={`/chat/${conv.id}`}
                     className={clsx(
-                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-[#a9bde0] hover:bg-[#173063] hover:text-[#e9effa] transition-colors truncate",
+                      "group flex items-center rounded-md text-xs text-[#a9bde0] hover:bg-[#173063] hover:text-[#e9effa] transition-colors",
                       pathname === `/chat/${conv.id}` && "bg-[#1d3c78] text-[#e9effa]"
                     )}
-                    title={conv.title}
                   >
-                    <MessageSquare size={12} className="flex-shrink-0" aria-hidden="true" />
-                    <span className="truncate">{conv.title}</span>
-                  </Link>
+                    <Link
+                      href={`/chat/${conv.id}`}
+                      className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5"
+                      title={conv.title}
+                    >
+                      <MessageSquare size={12} className="flex-shrink-0" aria-hidden="true" />
+                      <span className="truncate">{conv.title}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => requestDelete({ id: conv.id, title: conv.title })}
+                      className="mr-1 flex-shrink-0 rounded p-1 text-[#8aa3cf] hover:bg-[#b94040] hover:text-white md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
+                      aria-label={`Delete conversation ${conv.title}`}
+                      title="Delete conversation"
+                    >
+                      <Trash2 size={12} aria-hidden="true" />
+                    </button>
+                  </div>
                 ))
               )}
             </div>

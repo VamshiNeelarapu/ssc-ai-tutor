@@ -3,12 +3,20 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { createHash, timingSafeEqual } from "crypto";
 
-const SESSION_SECRET = process.env.SESSION_SECRET || "fallback_secret_for_dev_only_32chars";
+const DEV_FALLBACK_SECRET = "fallback_secret_for_dev_only_32chars";
 const JWT_EXPIRY = "7d";
 const COOKIE_NAME = "session";
 
 function getSecretKey(): Uint8Array {
-  return new TextEncoder().encode(SESSION_SECRET);
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    // Checked per call (not at import) so `next build` still works without runtime secrets
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SESSION_SECRET must be set to at least 32 characters in production.");
+    }
+    return new TextEncoder().encode(DEV_FALLBACK_SECRET);
+  }
+  return new TextEncoder().encode(secret);
 }
 
 export async function hashPassword(password: string): Promise<string> {

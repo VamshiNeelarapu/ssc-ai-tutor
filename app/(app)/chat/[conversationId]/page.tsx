@@ -7,6 +7,7 @@ import ChatMessage from "@/components/ChatMessage";
 import Button from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useChat } from "@/hooks/useChat";
+import { useConversationDelete } from "@/hooks/useConversationDelete";
 import type { ChatMessage as ChatMsg, NoteDraft } from "@/hooks/useChat";
 import ModelSelector from "@/components/ModelSelector";
 import { SAMPLE_PROMPTS, topicStudyPrompt } from "@/lib/chat-prompts";
@@ -98,17 +99,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Delete this conversation?")) return;
-    try {
-      await fetch(`/api/conversations/${params.conversationId}`, {
-        method: "DELETE",
-      });
-      router.push("/chat");
-    } catch {
-      alert("Failed to delete conversation");
-    }
-  };
+  const { requestDelete, dialog: deleteDialog } = useConversationDelete(() => router.push("/chat"));
+  const handleDelete = () => requestDelete({ id: params.conversationId, title: "this chat" });
 
   const handleReviewDraft = () => {
     if (!draft || !draftData) return;
@@ -126,6 +118,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
   return (
     <div className="flex h-full min-h-0 overflow-clip">
+      {deleteDialog}
       {/* Chat panel */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-clip">
         {/* Conversation header */}

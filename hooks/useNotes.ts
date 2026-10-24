@@ -11,7 +11,7 @@ export interface Note {
   examRelevance: string[];
   revisionStatus: "not_started" | "learning" | "needs_revision" | "revised";
   sourceConversationId?: string;
-  kind?: "note" | "current_affairs_month";
+  kind?: "note" | "current_affairs_month" | "chapter_summary";
   monthKey?: string;
   createdAt: string;
   updatedAt: string;

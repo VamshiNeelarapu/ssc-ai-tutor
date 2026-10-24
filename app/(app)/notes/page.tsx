@@ -11,6 +11,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useNotes } from "@/hooks/useNotes";
 import { topicStudyPrompt } from "@/lib/chat-prompts";
+import { ChapterNotesCard } from "@/components/ChapterNotesCard";
 
 const REVISION_STATUSES = [
   { value: "", label: "All" },
@@ -214,6 +215,8 @@ export default function NotesPage() {
             </button>
           </div>
         </div>
+
+        {sectionId && <ChapterNotesCard sectionId={sectionId} />}
 
         {browseTopics.length === 0 ? (
           <div className="text-center py-16 text-gray-400">

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MessageSquare, FileText, Plus, TrendingUp, Newspaper } from "lucide-react";
+import { MessageSquare, FileText, Plus, TrendingUp, Newspaper, Trash2 } from "lucide-react";
+import { useConversationDelete } from "@/hooks/useConversationDelete";
 import useAuth from "@/hooks/useAuth";
 import { RevisionBadge } from "@/components/ui/Badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -34,6 +35,9 @@ export default function DashboardPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [caItems, setCaItems] = useState<CAPreviewItem[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const { requestDelete, dialog: deleteDialog } = useConversationDelete((id) =>
+    setConversations((prev) => prev.filter((c) => c.id !== id))
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -167,6 +171,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Conversations */}
         <section aria-labelledby="conversations-heading">
+          {deleteDialog}
           <div className="flex items-center justify-between mb-4">
             <h2
               id="conversations-heading"
@@ -193,10 +198,13 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-2">
               {conversations.map((conv) => (
-                <Link
+                <div
                   key={conv.id}
+                  className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
+                >
+                <Link
                   href={`/chat/${conv.id}`}
-                  className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow"
+                  className="flex min-w-0 flex-1 items-center gap-3 p-3"
                 >
                   <MessageSquare
                     size={16}
@@ -213,6 +221,16 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => requestDelete({ id: conv.id, title: conv.title })}
+                  className="mr-2 flex-shrink-0 rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                  aria-label={`Delete conversation ${conv.title}`}
+                  title="Delete conversation"
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                </button>
+                </div>
               ))}
             </div>
           )}

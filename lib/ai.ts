@@ -7,6 +7,9 @@ export interface Message {
   content: string;
 }
 
+// Without this the SDK waits 10 minutes and retries twice, so a slow provider looks like a hang
+const AI_REQUEST_TIMEOUT_MS = 180_000;
+
 let aiClient: OpenAI | null = null;
 
 export function createAIClient(): OpenAI {
@@ -23,11 +26,15 @@ export function createAIClient(): OpenAI {
       aiClient = new OpenAI({
         apiKey: process.env.AI_API_KEY,
         baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+        timeout: AI_REQUEST_TIMEOUT_MS,
+        maxRetries: 1,
       });
     } else {
       aiClient = new OpenAI({
         apiKey: process.env.AI_API_KEY,
         baseURL: "https://openrouter.ai/api/v1",
+        timeout: AI_REQUEST_TIMEOUT_MS,
+        maxRetries: 1,
         defaultHeaders: {
           "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
           "X-Title": "SSC AI Study App",
@@ -456,7 +463,7 @@ export async function generateNoteDraft(
   topicFocus?: string,
   model?: string
 ): Promise<StudyNoteContent> {
-  const client = createAIClient();
+  createAIClient(); // fail early when no API key is configured
 
   const systemPrompt = `${SSC_SYSTEM_PROMPT}
 
@@ -508,12 +515,6 @@ IMPORTANT for pyqs: Include up to 5 SSC CGL previous-year questions ONLY if you 
 ${topicHint ? `Topic hint: ${topicHint}` : ""}
 ${topicFocus ? `STRICT REQUIREMENT: This note is ONLY about "${topicFocus}". Do NOT include facts, MCQs, or analysis about any other topic even if it appeared in conversation. Every bullet, concept, and MCQ must be directly and specifically about "${topicFocus}".` : ""}`;
 
-  const primaryModel = model || AI_MODEL;
-  const modelsToTry = [
-    primaryModel,
-    ...AI_MODELS.filter((m) => !m.paid).map((m) => m.id).filter((id) => id !== primaryModel),
-  ];
-
   const requestMessages = [
     { role: "system" as const, content: systemPrompt },
     ...conversationMessages.map((m) => ({ role: m.role, content: m.content })),
@@ -522,6 +523,24 @@ ${topicFocus ? `STRICT REQUIREMENT: This note is ONLY about "${topicFocus}". Do 
       content:
         "Based on our conversation above, please generate a comprehensive SSC CGL study note in the JSON format specified. Make it detailed and exam-ready. Return ONLY the raw JSON object — no markdown, no code fences, no explanation.",
     },
+  ];
+
+  return completeDraftJson(requestMessages, model, topicHint);
+}
+
+type DraftRequestMessage = { role: "system" | "user" | "assistant"; content: string };
+
+// Tries the chosen model, then the free fallbacks, until one returns usable note JSON
+async function completeDraftJson(
+  requestMessages: DraftRequestMessage[],
+  model: string | undefined,
+  topicHint?: string
+): Promise<StudyNoteContent> {
+  const client = createAIClient();
+  const primaryModel = model || AI_MODEL;
+  const modelsToTry = [
+    primaryModel,
+    ...AI_MODELS.filter((m) => !m.paid).map((m) => m.id).filter((id) => id !== primaryModel),
   ];
 
   let lastFailureReason = "no model produced a response";
@@ -617,4 +636,87 @@ Shortcuts: ${noteContent.shortcuts.join("\n")}
   } catch {
     return [];
   }
+}
+
+export interface ChapterTopicNotes {
+  topic: string;
+  notes: Array<{
+    title: string;
+    overview?: string;
+    coreConcepts: Array<{ heading: string; body: string }>;
+    keyFacts: string[];
+    shortcuts: string[];
+    commonConfusions: string[];
+  }>;
+}
+
+const CHAPTER_INPUT_CHARS = 90_000;
+
+function topicNotesText(entry: ChapterTopicNotes, budget: number): string {
+  const parts: string[] = [`### Topic: ${entry.topic}`];
+  for (const n of entry.notes) {
+    parts.push(`Note: ${n.title}`);
+    if (n.overview) parts.push(`Overview: ${n.overview}`);
+    for (const c of n.coreConcepts) parts.push(`${c.heading}: ${c.body}`);
+    if (n.keyFacts.length) parts.push(`Key facts:\n- ${n.keyFacts.join("\n- ")}`);
+    if (n.shortcuts.length) parts.push(`Shortcuts:\n- ${n.shortcuts.join("\n- ")}`);
+    if (n.commonConfusions.length) parts.push(`Common confusions:\n- ${n.commonConfusions.join("\n- ")}`);
+  }
+  const text = parts.join("\n");
+  return text.length > budget ? text.slice(0, budget) + " …[trimmed]" : text;
+}
+
+/**
+ * Builds the written part of a chapter note (overview, concepts, facts, shortcuts, tips,
+ * confusions) from the user's own topic notes. MCQs, worked examples and references are
+ * NOT produced here: the caller copies them unchanged from the topic notes.
+ */
+export async function generateChapterNote(
+  chapter: string,
+  subject: string | undefined,
+  topics: ChapterTopicNotes[],
+  model?: string
+): Promise<StudyNoteContent> {
+  createAIClient();
+
+  const budget = Math.max(2000, Math.floor(CHAPTER_INPUT_CHARS / Math.max(topics.length, 1)));
+  const material = topics.map((t) => topicNotesText(t, budget)).join("\n\n");
+
+  const systemPrompt = `${SSC_SYSTEM_PROMPT}
+
+## Chapter Consolidation Task
+You are given the student's OWN saved study notes for every topic of the chapter "${chapter}"${subject ? ` (subject: ${subject})` : ""}. Merge them into ONE chapter-level revision note for ${"SSC CGL"}.
+
+STRICT RULES:
+- Use ONLY facts, formulas, rules, definitions and examples that appear in the supplied topic notes. Do NOT add any new fact, number, date, name, year, PYQ or citation from your own memory. If something seems missing, leave it out.
+- If two topic notes disagree, keep the more cautious statement and add a "Check: ..." line to "commonConfusions".
+- Remove duplicates, group related points, and keep wording exam-ready and concise.
+- "coreConcepts": one entry per topic (heading = the topic name), body = the essential explanation in full sentences.
+- "keyFacts": the most testable facts and formulas across the whole chapter, grouped logically.
+- "shortcuts", "revisionTips", "commonConfusions": consolidated from the notes.
+- Do NOT write MCQs, worked examples, PYQs or references; they are added separately.
+
+Return ONLY a valid JSON object:
+{
+  "title": "string - '${chapter} - Chapter Notes'",
+  "overview": "string - 3-5 paragraphs summarising the whole chapter and how the topics connect",
+  "examRelevance": ["tier1"] (array drawn from: "tier1", "tier2", "ckt"),
+  "coreConcepts": [{ "heading": "string", "body": "string" }],
+  "keyFacts": ["string"],
+  "shortcuts": ["string"],
+  "revisionTips": ["string"],
+  "commonConfusions": ["string"]
+}`;
+
+  return completeDraftJson(
+    [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: `Here are my notes for the chapter "${chapter}". Consolidate them as instructed. Return ONLY the raw JSON object, with no markdown and no code fences.\n\n${material}`,
+      },
+    ],
+    model,
+    `${chapter} - Chapter Notes`
+  );
 }

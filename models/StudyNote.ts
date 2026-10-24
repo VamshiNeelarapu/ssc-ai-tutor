@@ -41,7 +41,7 @@ export interface IStudyNoteContent {
   references: IReference[];
 }
 
-export type NoteKind = "note" | "current_affairs_month";
+export type NoteKind = "note" | "current_affairs_month" | "chapter_summary";
 
 export interface IStudyNote extends Document {
   kind: NoteKind;
@@ -164,7 +164,7 @@ const StudyNoteSchema = new Schema<IStudyNote>(
     },
     kind: {
       type: String,
-      enum: ["note", "current_affairs_month"],
+      enum: ["note", "current_affairs_month", "chapter_summary"],
       default: "note",
     },
     monthKey: {
@@ -182,6 +182,11 @@ StudyNoteSchema.index({ userId: 1, revisionStatus: 1 });
 StudyNoteSchema.index(
   { userId: 1, monthKey: 1 },
   { unique: true, partialFilterExpression: { kind: "current_affairs_month" } }
+);
+// One consolidated chapter note per user and chapter (regenerating replaces it)
+StudyNoteSchema.index(
+  { userId: 1, sectionId: 1 },
+  { unique: true, partialFilterExpression: { kind: "chapter_summary" } }
 );
 StudyNoteSchema.index({ title: "text", "content.overview": "text" });
 
