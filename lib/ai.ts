@@ -54,7 +54,7 @@ export const SSC_SYSTEM_PROMPT = `You are an expert SSC (Staff Selection Commiss
 - Explaining concepts clearly, then teaching the fastest reliable method to solve questions under time pressure
 
 ## Teaching Approach
-1. **Concept first, then speed**: Explain the concept briefly, then show the shortest valid method (shortcuts, elimination, estimation) and when it is safe to use
+1. **Concept first, then speed**: Explain the concept fully first (definitions, the reasoning, formulas and solved examples), then show the shortest valid method (shortcuts, elimination, estimation) and when it is safe to use
 2. **Worked examples**: For Quant and Reasoning, solve representative SSC-style questions step by step; for English, state the rule behind each answer
 3. **Common traps**: Point out typical mistakes (misreading, unit errors, calculation slips, near-correct distractors) and how to avoid them
 4. **Memory aids**: Offer mnemonics, tables, timelines and formula sheets for General Awareness and formulas
@@ -474,9 +474,9 @@ The note should be detailed enough to study from and include all relevant inform
 Return ONLY a valid JSON object matching this exact schema:
 {
   "title": "string - concise but descriptive title",
-  "overview": "string - comprehensive 4-6 paragraph overview covering the topic in depth. Write full paragraphs, not bullets. Cover what the concept is, why it matters for SSC CGL, the key facts or formulas, and how SSC typically tests it.",
+  "overview": "string - 3-5 paragraphs that EXPLAIN THE TOPIC ITSELF from the basics: what it is, the idea behind it, its types or cases, and the main rules or formulas and how they connect. Teach it the way a good textbook would. Do not spend the overview on exam patterns.",
   "examRelevance": ["tier1"] (array drawn from: "tier1", "tier2", "ckt"),
-  "coreConcepts": [{ "heading": "string", "body": "string - write 2-3 detailed paragraphs explaining this concept thoroughly. Do not use bullet points here — use full sentences and paragraphs suitable for deep study." }],
+  "coreConcepts": [{ "heading": "string", "body": "string - a COMPLETE explanation of this part of the topic in 2-4 paragraphs: the definition, how and why it works, the formula or rule with what every symbol means, conditions and exceptions, and a short illustration with real numbers or a real sentence. Full sentences, no bullet lists." }],
   "keyFacts": ["string - specific facts, formulas, rules or definitions that SSC questions are built on"],
   "shortcuts": ["string - fast solving methods, calculation tricks, elimination techniques or mnemonics, with when to use them"],
   "revisionTips": ["string - memory aids, tricks, common confusions to avoid"],
@@ -510,7 +510,15 @@ Return ONLY a valid JSON object matching this exact schema:
   "suggestedTopic": "string (e.g., 'Successive percentage change')"
 }
 
-IMPORTANT for pyqs: Include up to 5 SSC CGL previous-year questions ONLY if you genuinely recall them (label "tier1" or "tier2" in the type field). If you are not sure a question was actually asked, do NOT include it — return an empty "pyqs" array instead. Never invent questions, years or shifts. For workedExamples, include 2-4 SSC-style questions with a short method and numbered solution steps; they are practice examples, not PYQs.
+IMPORTANT for pyqs: Include up to 5 SSC CGL previous-year questions ONLY if you genuinely recall them (label "tier1" or "tier2" in the type field). If you are not sure a question was actually asked, do NOT include it — return an empty "pyqs" array instead. Never invent questions, years or shifts. For workedExamples, include 4-6 SOLVED examples that go from easy to exam level, covering each important type of question in the topic, each with its full working. For Quant and Reasoning show every step with the numbers; for English state the rule and why each option is right or wrong; for General Awareness give a worked question with the reasoning. They are practice examples, not PYQs.
+
+## What the note must contain
+This note is the student's FULL STUDY MATERIAL for the topic. Teach the topic completely; do not only describe how SSC treats it.
+- Full notes = overview + coreConcepts + workedExamples: a complete explanation with the reasoning, and solved examples for every important type of problem or question.
+- Revision material = keyFacts, shortcuts, revisionTips, commonConfusions: only the short points the student must remember.
+- Exam-pattern commentary (how SSC tests the topic) must stay brief: at most ONE short coreConcepts entry titled "How SSC tests this topic", placed last.
+- Include 5 MCQs.
+- If the conversation covered only part of the topic, complete the explanation with standard, well-established content of the topic. Never invent facts, figures, dates or sources, and leave out anything you are not sure of.
 
 ${topicHint ? `Topic hint: ${topicHint}` : ""}
 ${topicFocus ? `STRICT REQUIREMENT: This note is ONLY about "${topicFocus}". Do NOT include facts, MCQs, or analysis about any other topic even if it appeared in conversation. Every bullet, concept, and MCQ must be directly and specifically about "${topicFocus}".` : ""}`;

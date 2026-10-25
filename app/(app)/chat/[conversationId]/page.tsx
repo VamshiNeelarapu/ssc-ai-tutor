@@ -10,7 +10,7 @@ import { useChat } from "@/hooks/useChat";
 import { useConversationDelete } from "@/hooks/useConversationDelete";
 import type { ChatMessage as ChatMsg, NoteDraft } from "@/hooks/useChat";
 import ModelSelector from "@/components/ModelSelector";
-import { SAMPLE_PROMPTS, topicStudyPrompt } from "@/lib/chat-prompts";
+import { SAMPLE_PROMPTS, topicStudyPrompt, topicChatUrl } from "@/lib/chat-prompts";
 import VoiceInputButton from "@/components/VoiceInputButton";
 import { useVoiceInput } from "@/hooks/useSpeechToText";
 
@@ -99,7 +99,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     }
   };
 
-  const { requestDelete, dialog: deleteDialog } = useConversationDelete(() => router.push("/chat"));
+  const { requestDelete, dialog: deleteDialog } = useConversationDelete((_id, info) =>
+    router.push(info.topic ? topicChatUrl({ ...info, topic: info.topic }) : "/chat")
+  );
   const handleDelete = () => requestDelete({ id: params.conversationId, title: "this chat" });
 
   const handleReviewDraft = () => {

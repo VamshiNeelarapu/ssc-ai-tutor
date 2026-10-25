@@ -56,7 +56,13 @@ export async function DELETE(
       return apiError("Conversation not found", 404);
     }
 
-    return apiSuccess({ message: "Conversation deleted" });
+    return apiSuccess({
+      message: "Conversation deleted",
+      topicId: conversation.topicId,
+      topic: conversation.topic,
+      subject: conversation.subject,
+      section: conversation.section,
+    });
   } catch (error) {
     return handleApiError(error);
   }

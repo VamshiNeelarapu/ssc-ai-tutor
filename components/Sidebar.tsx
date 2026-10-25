@@ -22,6 +22,7 @@ import {
 import { useAuthContext } from "@/contexts/AuthContext";
 import { SyllabusTree } from "./SyllabusTree";
 import { useConversationDelete } from "@/hooks/useConversationDelete";
+import { topicChatUrl } from "@/lib/chat-prompts";
 import type { SyllabusTreeNode } from "./SyllabusTree";
 
 interface Conversation {
@@ -45,9 +46,11 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const [chatStarted, setChatStarted] = useState<Record<string, boolean> | undefined>(undefined);
   const [syllabusOpen, setSyllabusOpen] = useState(true);
   const [conversationsOpen, setConversationsOpen] = useState(false);
-  const { requestDelete, dialog: deleteDialog } = useConversationDelete((id) => {
+  const { requestDelete, dialog: deleteDialog } = useConversationDelete((id, info) => {
     setConversations((prev) => prev.filter((c) => c.id !== id));
-    if (pathname === `/chat/${id}`) router.push("/chat");
+    if (pathname === `/chat/${id}`) {
+      router.push(info.topic ? topicChatUrl({ ...info, topic: info.topic }) : "/chat");
+    }
   });
 
   const fetchConversations = () => {

@@ -118,6 +118,67 @@ export function NoteViewer({ note, className, defaultMode = "full" }: NoteViewer
             </section>
           )}
 
+          {/* Solved examples (full working visible) */}
+          {content.workedExamples.length > 0 && (
+            <section aria-labelledby="solved-examples-heading">
+              <h2
+                id="solved-examples-heading"
+                className="text-lg font-semibold text-gray-900 mb-3"
+              >
+                Solved Examples
+              </h2>
+              <div className="space-y-4">
+                {content.workedExamples.map((ex, i) => (
+                  <SolvedExampleDisplay key={i} ex={ex} index={i} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Important points */}
+          {content.keyFacts.length > 0 && (
+            <section aria-labelledby="full-key-facts-heading">
+              <h2
+                id="full-key-facts-heading"
+                className="text-lg font-semibold text-gray-900 mb-3"
+              >
+                Important Points &amp; Formulas
+              </h2>
+              <ul className="space-y-2">
+                {content.keyFacts.map((fact, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="text-blue-500 mt-0.5 flex-shrink-0" aria-hidden="true">
+                      •
+                    </span>
+                    {fact}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Shortcuts */}
+          {content.shortcuts.length > 0 && (
+            <section aria-labelledby="full-shortcuts-heading">
+              <h2
+                id="full-shortcuts-heading"
+                className="text-lg font-semibold text-gray-900 mb-3"
+              >
+                Shortcuts &amp; Tricks
+              </h2>
+              <ul className="space-y-2">
+                {content.shortcuts.map((point, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="text-indigo-500 mt-0.5 flex-shrink-0" aria-hidden="true">
+                      •
+                    </span>
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {/* Common Confusions */}
           {content.commonConfusions.length > 0 && (
             <section aria-labelledby="confusions-heading">
@@ -444,6 +505,37 @@ function MCQDisplay({ mcq, index }: MCQDisplayProps) {
           <Eye size={12} />
           Show answer
         </button>
+      )}
+    </div>
+  );
+}
+
+function SolvedExampleDisplay({
+  ex,
+  index,
+}: {
+  ex: { question: string; approach?: string; steps?: string[] };
+  index: number;
+}) {
+  return (
+    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+      <p className="font-medium text-gray-900 text-sm mb-2">
+        Example {index + 1}: {ex.question}
+      </p>
+      {ex.approach && (
+        <p className="text-xs text-indigo-700 mb-2">
+          Approach: <span className="font-medium">{ex.approach}</span>
+        </p>
+      )}
+      {ex.steps && ex.steps.length > 0 && (
+        <ol className="text-sm text-gray-700 space-y-1">
+          {ex.steps.map((step, j) => (
+            <li key={j} className="flex items-start gap-2">
+              <span className="text-indigo-400 flex-shrink-0">{j + 1}.</span>
+              {step}
+            </li>
+          ))}
+        </ol>
       )}
     </div>
   );

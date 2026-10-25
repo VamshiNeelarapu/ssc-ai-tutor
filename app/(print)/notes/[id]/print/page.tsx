@@ -213,6 +213,47 @@ export default function PrintNotePage() {
               </>
             )}
 
+            {content.workedExamples.length > 0 && (
+              <>
+                <h2>Solved Examples</h2>
+                {content.workedExamples.map((ex, i) => (
+                  <div key={i} className="concept">
+                    <div className="concept-heading">Example {i + 1}: {ex.question}</div>
+                    {ex.approach && <p><em>Approach: {ex.approach}</em></p>}
+                    {ex.steps && ex.steps.length > 0 && (
+                      <ol>
+                        {ex.steps.map((s, j) => (
+                          <li key={j}>{s}</li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+
+            {content.keyFacts.length > 0 && (
+              <>
+                <h2>Important Points &amp; Formulas</h2>
+                <ul>
+                  {content.keyFacts.map((f, i) => (
+                    <li key={i}>{f}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {content.shortcuts.length > 0 && (
+              <>
+                <h2>Shortcuts &amp; Tricks</h2>
+                <ul>
+                  {content.shortcuts.map((p, i) => (
+                    <li key={i}>{p}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+
             {content.commonConfusions.length > 0 && (
               <>
                 <h2>Common Confusions</h2>
