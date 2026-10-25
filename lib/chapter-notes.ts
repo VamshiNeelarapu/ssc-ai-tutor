@@ -73,3 +73,39 @@ export async function getChapterStatus(
       })),
   };
 }
+
+export interface TopicStatus {
+  topicId: string;
+  topicName: string;
+  sectionId: string;
+  sectionName: string;
+  subjectId: string | null;
+  subjectName?: string;
+  noteCount: number;
+  notes: IStudyNote[];
+}
+
+/** The topic's own notes, with the chapter and subject it belongs to. */
+export async function getTopicStatus(userId: string, topicId: string): Promise<TopicStatus | null> {
+  if (!mongoose.isValidObjectId(topicId)) return null;
+
+  const topic = await SyllabusNode.findById(topicId);
+  if (!topic || topic.nodeType !== "topic" || !topic.parentId) return null;
+
+  const section = await SyllabusNode.findById(topic.parentId);
+  if (!section) return null;
+  const subject = section.parentId ? await SyllabusNode.findById(section.parentId) : null;
+
+  const notes = await StudyNote.find({ userId, topicId, kind: TOPIC_NOTE_KINDS }).sort({ createdAt: 1 });
+
+  return {
+    topicId,
+    topicName: topic.name,
+    sectionId: section._id.toString(),
+    sectionName: section.name,
+    subjectId: section.parentId ?? null,
+    subjectName: subject?.name,
+    noteCount: notes.length,
+    notes,
+  };
+}

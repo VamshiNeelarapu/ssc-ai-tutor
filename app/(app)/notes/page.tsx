@@ -12,6 +12,7 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useNotes } from "@/hooks/useNotes";
 import { topicStudyPrompt } from "@/lib/chat-prompts";
 import { ChapterNotesCard } from "@/components/ChapterNotesCard";
+import { ChapterFlashcardsCard } from "@/components/ChapterFlashcardsCard";
 
 const REVISION_STATUSES = [
   { value: "", label: "All" },
@@ -217,6 +218,7 @@ export default function NotesPage() {
         </div>
 
         {sectionId && <ChapterNotesCard sectionId={sectionId} />}
+        {sectionId && <ChapterFlashcardsCard sectionId={sectionId} />}
 
         {browseTopics.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
@@ -328,6 +330,8 @@ export default function NotesPage() {
           </div>
         </div>
       )}
+
+      {topicId && <ChapterFlashcardsCard topicId={topicId} />}
 
       {topicId && (
         <div className="flex items-center gap-2 mb-4">

@@ -539,11 +539,20 @@ ${topicFocus ? `STRICT REQUIREMENT: This note is ONLY about "${topicFocus}". Do 
 type DraftRequestMessage = { role: "system" | "user" | "assistant"; content: string };
 
 // Tries the chosen model, then the free fallbacks, until one returns usable note JSON
-async function completeDraftJson(
+function completeDraftJson(
   requestMessages: DraftRequestMessage[],
   model: string | undefined,
   topicHint?: string
 ): Promise<StudyNoteContent> {
+  return completeJsonWithFallback(requestMessages, model, (raw) => parseDraftContent(raw, topicHint));
+}
+
+// Sends the request to the chosen model, then to the free fallbacks, until `parse` accepts a reply
+async function completeJsonWithFallback<T>(
+  requestMessages: DraftRequestMessage[],
+  model: string | undefined,
+  parse: (raw: string) => { success: true; data: T } | { success: false; reason: string }
+): Promise<T> {
   const client = createAIClient();
   const primaryModel = model || AI_MODEL;
   const modelsToTry = [
@@ -578,7 +587,7 @@ async function completeDraftJson(
     }
 
     const raw = response.choices[0]?.message?.content || "{}";
-    const result = parseDraftContent(raw, topicHint);
+    const result = parse(raw);
     if (result.success) return result.data;
 
     lastFailureReason = result.reason;
@@ -655,6 +664,8 @@ export interface ChapterTopicNotes {
     keyFacts: string[];
     shortcuts: string[];
     commonConfusions: string[];
+    // Only read when building flashcards
+    mcqs?: Array<{ question: string; options: string[]; correctOptionIndex: number; explanation: string }>;
   }>;
 }
 
@@ -726,5 +737,111 @@ Return ONLY a valid JSON object:
     ],
     model,
     `${chapter} - Chapter Notes`
+  );
+}
+
+// Pulls the first JSON value out of a model reply, repairing a reply that was cut off
+function extractJson(raw: string): unknown | null {
+  const content = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+  const attempts = [content];
+  const firstBrace = content.indexOf("{");
+  const lastBrace = content.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) attempts.push(content.slice(firstBrace, lastBrace + 1));
+
+  for (const text of attempts) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      /* try the next form */
+    }
+  }
+  if (firstBrace !== -1) {
+    const repaired = repairTruncatedJson(content.slice(firstBrace));
+    if (repaired) {
+      try {
+        return JSON.parse(repaired);
+      } catch {
+        /* give up below */
+      }
+    }
+  }
+  return null;
+}
+
+type RawFlashcards = { success: true; data: unknown[] } | { success: false; reason: string };
+
+function parseFlashcardDraft(raw: string): RawFlashcards {
+  const parsed = extractJson(raw);
+  const cards = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === "object"
+    ? (parsed as { cards?: unknown }).cards
+    : undefined;
+  if (!Array.isArray(cards) || cards.length === 0) {
+    return { success: false, reason: "response did not contain any flashcards" };
+  }
+  return { success: true, data: cards };
+}
+
+export interface FlashcardRequest {
+  // The topic the cards are about, with its saved notes
+  entry: ChapterTopicNotes;
+  // "subject > chapter" for context
+  parent?: string;
+  min: number;
+  max: number;
+  model?: string;
+}
+
+const FLASHCARD_INPUT_CHARS = 60_000;
+
+function flashcardMaterial(entry: ChapterTopicNotes): string {
+  const base = topicNotesText(entry, Number.MAX_SAFE_INTEGER);
+  const practice = entry.notes
+    .flatMap((n) => n.mcqs ?? [])
+    .map((q) => {
+      const answer = q.options[q.correctOptionIndex];
+      return `- ${q.question} Answer: ${answer ?? "see explanation"}. ${q.explanation}`;
+    });
+  const text = practice.length ? `${base}\nPractice questions with answers:\n${practice.join("\n")}` : base;
+  return text.length > FLASHCARD_INPUT_CHARS ? text.slice(0, FLASHCARD_INPUT_CHARS) + " …[trimmed]" : text;
+}
+
+/**
+ * Picks the most important recall cards for ONE topic from the student's own saved notes.
+ * Returns the AI's raw cards; the caller cleans them with cleanFlashcards().
+ */
+export async function generateFlashcards(req: FlashcardRequest): Promise<unknown[]> {
+  createAIClient();
+
+  const { entry, parent, min, max, model } = req;
+  const aim = Math.round((min + max) / 2);
+
+  const systemPrompt = `${SSC_SYSTEM_PROMPT}
+
+## Flashcard Task
+You are given the student's OWN saved study notes for the topic "${entry.topic}"${parent ? ` (${parent})` : ""}. Build ${min} to ${max} recall flashcards (aim for ${aim}) for SSC CGL from them.
+
+STRICT RULES:
+- Every card must rest on a fact, formula, rule, definition or trap that appears in the supplied notes. Do NOT add any fact, number, date, name or year from your own memory. Reach at least ${min} cards by using every distinct point in the notes, including the practice questions and their answers. Only if the notes truly hold fewer distinct points, return fewer. Never pad with repeats and never invent.
+- Choose the bits SSC asks again and again: the formulas, rules, standard values, definitions, exceptions and traps that decide questions in previous papers. Put the points most likely to be asked first. Do NOT say a card came from a particular paper, year or shift.
+- "front": a short, specific question or prompt with ONE clear answer (for example "Formula for successive percentage change?"). Never ask the student to "explain" or "discuss".
+- "back": the answer in at most 40 words. Write formulas plainly and say what each symbol means when it is not obvious.
+- One idea per card. No duplicates, and no card that depends on another card.
+- "tag": one of formula, fact, rule, definition, trap, shortcut.
+
+Return ONLY a valid JSON object:
+{ "cards": [{ "front": "string", "back": "string", "tag": "formula" }] }`;
+
+  return completeJsonWithFallback<unknown[]>(
+    [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: `Here are my notes for the topic "${entry.topic}". Make the flashcards as instructed. Return ONLY the raw JSON object, with no markdown and no code fences.\n\n${flashcardMaterial(entry)}`,
+      },
+    ],
+    model,
+    parseFlashcardDraft
   );
 }

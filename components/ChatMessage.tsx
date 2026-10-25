@@ -1,9 +1,11 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { clsx } from "clsx";
-import { User, Bot } from "lucide-react";
+import { User, Bot, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { copyRich } from "@/lib/clipboard";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
@@ -13,6 +15,16 @@ interface ChatMessageProps {
 
 export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
   const isUser = role === "user";
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState<"done" | "failed" | null>(null);
+
+  // Copies this one reply: formatted for Word/Notes, markdown text for plain-text fields
+  const copyReply = async () => {
+    const html = bodyRef.current?.innerHTML ?? "";
+    const ok = await copyRich(content, html);
+    setCopied(ok ? "done" : "failed");
+    setTimeout(() => setCopied(null), 2000);
+  };
 
   return (
     <div className={clsx("flex gap-3 px-4 py-4", isUser ? "bg-white" : "bg-slate-50")}>
@@ -36,12 +48,24 @@ export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
               {new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
+          {!isUser && content.trim() && (
+            <button
+              type="button"
+              onClick={copyReply}
+              className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+              aria-label="Copy this response"
+              title="Copy this response"
+            >
+              {copied === "done" ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
+              {copied === "done" ? "Copied" : copied === "failed" ? "Copy blocked" : "Copy"}
+            </button>
+          )}
         </div>
 
         {isUser ? (
           <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{content}</p>
         ) : (
-          <div className="text-sm text-gray-800 leading-relaxed markdown-body">
+          <div ref={bodyRef} className="text-sm text-gray-800 leading-relaxed markdown-body">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
