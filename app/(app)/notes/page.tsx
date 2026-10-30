@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Search, SlidersHorizontal, X, MessageSquare, BookOpen, FileText, ChevronRight, MessageSquareText } from "lucide-react";
+import { Search, SlidersHorizontal, X, MessageSquare, BookOpen, FileText, ChevronRight, MessageSquareText, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { NoteCard } from "@/components/NoteCard";
@@ -303,12 +303,18 @@ export default function NotesPage() {
                 {topicEntry?.name || "Topic Notes"}
               </h1>
               <p className="text-gray-500 text-sm mt-1">
-                {total} note{total !== 1 ? "s" : ""} · Notes are only added via chat
+                {total} note{total !== 1 ? "s" : ""}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <Link href={topicChatUrl || `/chat?topicId=${topicId}`}>
+              <Link href={`/notes/new?topicId=${topicId}`}>
                 <Button size="sm">
+                  <Plus size={14} aria-hidden="true" />
+                  Add notes
+                </Button>
+              </Link>
+              <Link href={topicChatUrl || `/chat?topicId=${topicId}`}>
+                <Button size="sm" variant="secondary">
                   {existingTopicConversationId ? (
                     <MessageSquareText size={14} aria-hidden="true" />
                   ) : (
@@ -328,6 +334,12 @@ export default function NotesPage() {
               {total} note{total !== 1 ? "s" : ""} saved
             </p>
           </div>
+          <Link href="/notes/new">
+            <Button size="sm">
+              <Plus size={14} aria-hidden="true" />
+              Add notes
+            </Button>
+          </Link>
         </div>
       )}
 
@@ -399,20 +411,18 @@ export default function NotesPage() {
           title={topicId ? `No notes for ${topicEntry?.name || "this topic"} yet` : "No notes found"}
           description={
             topicId
-              ? `Chat with the AI about "${topicEntry?.name || "this topic"}" and save a note from that conversation.`
+              ? `Paste your notes for "${topicEntry?.name || "this topic"}" to add them here.`
               : q
               ? `No notes match "${q}". Try a different search.`
-              : "Start chatting with the AI tutor on a topic and generate study notes."
+              : "Paste your notes to make your first note."
           }
           action={
-            topicId
-              ? {
-                  label: existingTopicConversationId
-                    ? "Continue chat"
-                    : `Chat about ${topicEntry?.name || "this topic"}`,
-                  onClick: () => router.push(topicChatUrl || `/chat?topicId=${topicId}`),
+            q
+              ? undefined
+              : {
+                  label: "Add notes",
+                  onClick: () => router.push(topicId ? `/notes/new?topicId=${topicId}` : "/notes/new"),
                 }
-              : undefined
           }
         />
       ) : (

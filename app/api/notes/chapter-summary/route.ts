@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
           notes: entry.notes.map((n) => ({
             title: n.title,
             overview: n.content.overview,
+            markdown: n.content.markdown,
             coreConcepts: n.content.coreConcepts ?? [],
             keyFacts: n.content.keyFacts ?? [],
             shortcuts: n.content.shortcuts ?? [],

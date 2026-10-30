@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Wand2, X, Trash2 } from "lucide-react";
+import { Send, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ChatMessage from "@/components/ChatMessage";
 import Button from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useChat } from "@/hooks/useChat";
 import { useConversationDelete } from "@/hooks/useConversationDelete";
-import type { ChatMessage as ChatMsg, NoteDraft } from "@/hooks/useChat";
+import type { ChatMessage as ChatMsg } from "@/hooks/useChat";
 import ModelSelector from "@/components/ModelSelector";
 import { SAMPLE_PROMPTS, topicStudyPrompt, topicChatUrl } from "@/lib/chat-prompts";
 import VoiceInputButton from "@/components/VoiceInputButton";
@@ -24,12 +24,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     conversationId,
     messages,
     loading,
-    draft,
-    draftData,
-    draftLoading,
     sendMessage,
-    generateDraft,
-    clearDraft,
     setMessages,
   } = useChat(params.conversationId);
 
@@ -103,12 +98,6 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     router.push(info.topic ? topicChatUrl({ ...info, topic: info.topic }) : "/chat")
   );
   const handleDelete = () => requestDelete({ id: params.conversationId, title: "this chat" });
-
-  const handleReviewDraft = () => {
-    if (!draft || !draftData) return;
-    sessionStorage.setItem("noteDraft", JSON.stringify({ draft, draftData }));
-    router.push("/notes/draft");
-  };
 
   if (initialLoading) {
     return (
@@ -201,23 +190,11 @@ export default function ConversationPage({ params }: ConversationPageProps) {
             <ModelSelector />
           </div>
 
-          {messages.some((m) => m.role === "assistant") && (
-            <div className="flex items-center gap-2 mb-3">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={generateDraft}
-                loading={draftLoading}
-                disabled={!conversationId}
-              >
-                <Wand2 size={14} aria-hidden="true" />
-                Generate Study Notes
-              </Button>
-              {conversationTopic && (
-                <span className="text-xs text-gray-400">
-                  Topic: <span className="font-medium text-gray-600">{conversationTopic}</span>
-                </span>
-              )}
+          {conversationTopic && messages.some((m) => m.role === "assistant") && (
+            <div className="mb-3">
+              <span className="text-xs text-gray-400">
+                Topic: <span className="font-medium text-gray-600">{conversationTopic}</span>
+              </span>
             </div>
           )}
 
@@ -253,78 +230,6 @@ export default function ConversationPage({ params }: ConversationPageProps) {
             </Button>
           </div>
         </div>
-      </div>
-
-      {/* Draft panel */}
-      {draft && (
-        <DraftPanel
-          draft={draft}
-          onReview={handleReviewDraft}
-          onClose={clearDraft}
-        />
-      )}
-    </div>
-  );
-}
-
-function DraftPanel({
-  draft,
-  onReview,
-  onClose,
-}: {
-  draft: NoteDraft;
-  onReview: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-white flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-        <div>
-          <p className="text-sm font-medium text-gray-900">Note Draft Ready</p>
-          <p className="text-xs text-gray-500">Review before saving</p>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600"
-          aria-label="Close draft panel"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <div>
-          <h3 className="font-semibold text-gray-900 text-sm">{draft.title}</h3>
-          {draft.suggestedSubject && (
-            <p className="text-xs text-blue-600 mt-1">
-              📁 {draft.suggestedSubject}
-              {draft.suggestedSection ? ` > ${draft.suggestedSection}` : ""}
-            </p>
-          )}
-        </div>
-
-        {draft.overview && (
-          <p className="text-xs text-gray-600 line-clamp-3">{draft.overview}</p>
-        )}
-
-        {draft.keyFacts.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-purple-700 mb-1">
-              Key Facts ({draft.keyFacts.length})
-            </p>
-            <ul className="text-xs text-gray-600 space-y-0.5">
-              {draft.keyFacts.slice(0, 3).map((f, i) => (
-                <li key={i} className="truncate">• {f}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      <div className="p-4 border-t border-gray-200">
-        <Button className="w-full" onClick={onReview}>
-          Review & Save Note
-        </Button>
       </div>
     </div>
   );

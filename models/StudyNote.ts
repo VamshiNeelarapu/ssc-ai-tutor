@@ -22,6 +22,16 @@ export interface IWorkedExample {
   steps?: string[];
 }
 
+// A practice question that came with pasted notes. The answer may be missing.
+export interface IPracticeQuestion {
+  question: string;
+  options: string[];
+  correctOptionIndex?: number;
+  explanation?: string;
+  // "pasted": came with the content or an answer key you gave; "ai": worked out by the AI; "none": no answer yet
+  answerSource: "pasted" | "ai" | "none";
+}
+
 export interface IReference {
   title: string;
   url?: string;
@@ -39,6 +49,11 @@ export interface IStudyNoteContent {
   mcqs: IMCQ[];
   workedExamples: IWorkedExample[];
   references: IReference[];
+  // Notes pasted by the user: kept as written, shown as is
+  markdown?: string;
+  quickRevisionMarkdown?: string;
+  practiceNote?: string;
+  practiceQuestions?: IPracticeQuestion[];
 }
 
 export type NoteKind = "note" | "current_affairs_month" | "chapter_summary";
@@ -91,6 +106,17 @@ const WorkedExampleSchema = new Schema<IWorkedExample>(
   { _id: false }
 );
 
+const PracticeQuestionSchema = new Schema<IPracticeQuestion>(
+  {
+    question: { type: String, required: true },
+    options: { type: [String], required: true },
+    correctOptionIndex: { type: Number },
+    explanation: { type: String },
+    answerSource: { type: String, enum: ["pasted", "ai", "none"], default: "none" },
+  },
+  { _id: false }
+);
+
 const ReferenceSchema = new Schema<IReference>(
   {
     title: { type: String, required: true },
@@ -116,6 +142,10 @@ const StudyNoteContentSchema = new Schema<IStudyNoteContent>(
     mcqs: { type: [MCQSchema], default: [] },
     workedExamples: { type: [WorkedExampleSchema], default: [] },
     references: { type: [ReferenceSchema], default: [] },
+    markdown: { type: String },
+    quickRevisionMarkdown: { type: String },
+    practiceNote: { type: String },
+    practiceQuestions: { type: [PracticeQuestionSchema], default: undefined },
   },
   { _id: false }
 );

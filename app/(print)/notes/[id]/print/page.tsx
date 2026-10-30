@@ -3,8 +3,20 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { examLabel } from "@/lib/exam";
+import { ImportedPrint, type ImportedPrintMode } from "./ImportedPrint";
 
 interface NoteContent {
+  // Present for notes pasted by the user
+  markdown?: string;
+  quickRevisionMarkdown?: string;
+  practiceNote?: string;
+  practiceQuestions?: Array<{
+    question: string;
+    options: string[];
+    correctOptionIndex?: number;
+    explanation?: string;
+    answerSource?: "pasted" | "ai" | "none";
+  }>;
   overview?: string;
   coreConcepts: Array<{ heading: string; body: string }>;
   keyFacts: string[];
@@ -107,7 +119,9 @@ const PRINT_STYLES = `
 export default function PrintNotePage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
-  const mode = (searchParams.get("mode") as "full" | "revision") || "full";
+  const requestedMode = searchParams.get("mode");
+  const mode: ImportedPrintMode =
+    requestedMode === "revision" || requestedMode === "practice" ? requestedMode : "full";
   const id = params.id;
 
   const [note, setNote] = useState<NoteData | null>(null);
@@ -156,7 +170,9 @@ export default function PrintNotePage() {
   }
 
   const { content } = note;
-  const modeLabel = mode === "full" ? "Full Notes" : "Quick Revision Sheet";
+  const imported = Boolean(content.markdown);
+  const modeLabel =
+    mode === "full" ? "Full Notes" : mode === "practice" ? "Practice Questions" : imported ? "Quick Revision" : "Quick Revision Sheet";
 
   return (
     <>
@@ -188,7 +204,9 @@ export default function PrintNotePage() {
           </div>
         </div>
 
-        {mode === "full" ? (
+        {imported ? (
+          <ImportedPrint note={note} mode={mode} />
+        ) : mode === "full" ? (
           <>
             {content.overview && (
               <>

@@ -43,6 +43,17 @@ export interface NoteDetail extends Note {
       publisher?: string;
       verificationStatus: string;
     }>;
+    // Notes pasted by the user (see lib/notes-import.ts)
+    markdown?: string;
+    quickRevisionMarkdown?: string;
+    practiceNote?: string;
+    practiceQuestions?: Array<{
+      question: string;
+      options: string[];
+      correctOptionIndex?: number;
+      explanation?: string;
+      answerSource: "pasted" | "ai" | "none";
+    }>;
   };
 }
 

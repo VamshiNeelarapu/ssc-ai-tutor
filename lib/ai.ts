@@ -79,26 +79,24 @@ Remember: Your goal is to help students build real understanding of SSC CGL topi
 
 export const AI_MODEL = process.env.AI_MODEL || "google/gemini-2.0-flash-exp:free";
 
+// Chat is for clearing doubts quickly, like ChatGPT or Gemini: no required format, answer first.
+const CHAT_SYSTEM_PROMPT = `You are a friendly, knowledgeable tutor helping a student prepare for the SSC CGL exam (Tier-I, Tier-II and the Computer Knowledge Test). The student chats with you to clear doubts.
+
+How to answer:
+- Answer the question straight away, then add only the explanation that helps. Be as short as the question allows.
+- Write like a person in a chat: plain, natural sentences. There is no required structure. Do not use headings, tables, bold text, emoji or bullet lists unless the student asks for one or it is clearly the simplest way to say something.
+- For maths and reasoning, show the working line by line in plain text, with the shortest reliable method.
+- Do not add summaries, "key points", exam-pattern commentary or follow-up suggestions unless asked.
+- Never make things up. If you are not sure of a fact, a date, a name or a number, say so. For anything that changes over time (office-holders, laws, schemes, records, statistics), say it may have changed and should be checked.
+- Do not invent sources or links, and do not claim a question was asked in a past SSC paper unless you are sure.`;
+
 export function buildSubjectSystemPrompt(subject?: string, topic?: string, section?: string): string {
-  if (!subject && !topic) return SSC_SYSTEM_PROMPT;
+  const context = [topic && `topic: ${topic}`, section && `chapter: ${section}`, subject && `subject: ${subject}`].filter(Boolean).join(", ");
+  if (!context) return CHAT_SYSTEM_PROMPT;
+  // The topic is background only: the student can ask anything
+  return `${CHAT_SYSTEM_PROMPT}
 
-  if (topic) {
-    return `${SSC_SYSTEM_PROMPT}
-
-## Topic Focus Constraint — STRICT
-This conversation is ONLY about **${topic}**${section || subject ? ` (${[section && `chapter: ${section}`, subject && `subject: ${subject}`].filter(Boolean).join(", ")})` : ""} for SSC CGL preparation.
-
-You MUST follow these rules without exception:
-1. Discuss ONLY **${topic}**. Do not explain, mention, or elaborate on any other topic — even closely related ones — unless the user explicitly asks you to compare them briefly within the context of ${topic}.
-2. If the conversation drifts or the user asks about a different topic (e.g., if this is about "${topic}" and the user asks about an adjacent topic like another chapter, another rule, another concept), politely but firmly say: "We're focusing on **${topic}** in this chat. Please start a new chat from the dashboard to study that topic."
-3. When generating study notes, include ONLY content that is directly and specifically about **${topic}**. Do not include content about related topics that came up in conversation.
-4. Stay within SSC CGL exam scope and relevance.`;
-  }
-
-  return `${SSC_SYSTEM_PROMPT}
-
-## Subject Focus Constraint
-This conversation is specifically about **${subject}** for SSC CGL preparation. Keep all responses focused on ${subject} and its relevance to SSC CGL. If the user's question is unrelated to ${subject} or SSC CGL, politely decline and redirect: "This chat is focused on **${subject}** for SSC CGL. For other topics, please start a new chat from the dashboard."`;
+The student started this chat from (${context}). Treat that as background, and answer whatever they ask, even if it is about something else.`;
 }
 
 export async function chat(messages: Message[], options?: { maxTokens?: number; model?: string }): Promise<string> {
@@ -664,6 +662,8 @@ export interface ChapterTopicNotes {
     keyFacts: string[];
     shortcuts: string[];
     commonConfusions: string[];
+    // Notes the student pasted: read as they are
+    markdown?: string;
     // Only read when building flashcards
     mcqs?: Array<{ question: string; options: string[]; correctOptionIndex: number; explanation: string }>;
   }>;
@@ -675,6 +675,8 @@ function topicNotesText(entry: ChapterTopicNotes, budget: number): string {
   const parts: string[] = [`### Topic: ${entry.topic}`];
   for (const n of entry.notes) {
     parts.push(`Note: ${n.title}`);
+    if (n.markdown) parts.push(`Notes:
+${n.markdown}`);
     if (n.overview) parts.push(`Overview: ${n.overview}`);
     for (const c of n.coreConcepts) parts.push(`${c.heading}: ${c.body}`);
     if (n.keyFacts.length) parts.push(`Key facts:\n- ${n.keyFacts.join("\n- ")}`);
@@ -844,4 +846,121 @@ Return ONLY a valid JSON object:
     model,
     parseFlashcardDraft
   );
+}
+
+const NOTES_INPUT_CHARS = 90_000;
+
+/**
+ * Builds a quick revision sheet from the student's own full notes. It may shorten wording but not
+ * add facts, and every distinct exam fact in the notes has to survive.
+ */
+export async function generateQuickRevision(notesMarkdown: string, model?: string): Promise<string> {
+  createAIClient();
+
+  const notes =
+    notesMarkdown.length > NOTES_INPUT_CHARS ? notesMarkdown.slice(0, NOTES_INPUT_CHARS) + "\n…[trimmed]" : notesMarkdown;
+
+  const systemPrompt = `${SSC_SYSTEM_PROMPT}
+
+## Quick Revision Task
+You are given the student's own full study notes. Write a QUICK REVISION sheet from them, in markdown, for last-day revision.
+
+STRICT RULES:
+- Use ONLY what is in the notes. Do NOT add any fact, number, date, name or example from your own memory.
+- Shorten the wording, but never drop a distinct exam fact: every name, date, number, place, formula, association, comparison, mnemonic and "trap" in the notes must still be there in short form.
+- Follow the order and headings of the notes (shortened headings are fine). Use "##" for sections.
+- Prefer short bullet lines. Use a compact table where the notes compare things or match sites, terms or dates.
+- Keep the notes' mnemonics and warnings, written as short lines.
+- No introduction, no closing remarks, no advice about how to study.
+
+Return ONLY the markdown.`;
+
+  return completeJsonWithFallback<string>(
+    [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: `Here are my full notes. Make the quick revision sheet as instructed.\n\n${notes}` },
+    ],
+    model,
+    (raw) => {
+      const text = raw
+        .trim()
+        .replace(/^```(?:markdown|md)?\s*/i, "")
+        .replace(/\s*```\s*$/, "")
+        .trim();
+      return text.length >= 200 ? { success: true, data: text } : { success: false, reason: "response was too short to be a revision sheet" };
+    }
+  );
+}
+
+export interface PracticeAnswer {
+  n: number; // 1-based question number
+  answerIndex: number;
+  explanation: string;
+}
+
+/**
+ * Works out answers for practice questions that came without them. The notes are the main source;
+ * where they do not settle a question, the explanation starts with "Not covered in the notes".
+ */
+export async function generatePracticeAnswers(
+  notesMarkdown: string,
+  questions: Array<{ n: number; question: string; options: string[] }>,
+  model?: string
+): Promise<PracticeAnswer[]> {
+  createAIClient();
+
+  const notes =
+    notesMarkdown.length > NOTES_INPUT_CHARS ? notesMarkdown.slice(0, NOTES_INPUT_CHARS) + "\n…[trimmed]" : notesMarkdown;
+  const list = questions
+    .map((q) => `${q.n}. ${q.question}\n${q.options.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join("\n")}`)
+    .join("\n\n");
+
+  const systemPrompt = `${SSC_SYSTEM_PROMPT}
+
+## Answer Key Task
+You are given the student's study notes and a set of practice questions with no answer key. Work out the correct option for each question.
+
+RULES:
+- Use the notes as the main source. If the notes do not settle a question, use standard, well-established knowledge, and start that explanation with "Not covered in the notes:".
+- If you are not sure, still choose the most likely option and start the explanation with "Unsure:".
+- "explanation": one or two short sentences saying why the answer is right.
+- Answer EVERY question. Use the same question numbers.
+
+Return ONLY a valid JSON object:
+{ "answers": [{ "n": 1, "answer": "B", "explanation": "string" }] }`;
+
+  const raw = await completeJsonWithFallback<unknown[]>(
+    [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: `NOTES:\n${notes}\n\nQUESTIONS:\n${list}\n\nReturn ONLY the raw JSON object, with no markdown and no code fences.`,
+      },
+    ],
+    model,
+    (text) => {
+      const parsed = extractJson(text);
+      const answers = Array.isArray(parsed)
+        ? parsed
+        : parsed && typeof parsed === "object"
+        ? (parsed as { answers?: unknown }).answers
+        : undefined;
+      return Array.isArray(answers) && answers.length > 0
+        ? { success: true, data: answers }
+        : { success: false, reason: "response did not contain any answers" };
+    }
+  );
+
+  const byNumber = new Map(questions.map((q) => [q.n, q]));
+  const out: PracticeAnswer[] = [];
+  for (const item of raw) {
+    const a = item as { n?: unknown; answer?: unknown; explanation?: unknown };
+    const n = Number(a?.n);
+    const q = byNumber.get(n);
+    const letter = typeof a?.answer === "string" ? a.answer.trim().charAt(0).toUpperCase() : "";
+    const idx = letter ? letter.charCodeAt(0) - 65 : -1;
+    if (!q || idx < 0 || idx >= q.options.length || out.some((x) => x.n === n)) continue;
+    out.push({ n, answerIndex: idx, explanation: typeof a.explanation === "string" ? a.explanation.trim().slice(0, 600) : "" });
+  }
+  return out;
 }

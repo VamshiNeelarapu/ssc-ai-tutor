@@ -11,12 +11,14 @@ import {
   ChevronDown,
   Download,
   Newspaper,
+  RefreshCw,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { RevisionBadge } from "@/components/ui/Badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { NoteViewer } from "@/components/NoteViewer";
+import { ImportedNoteViewer } from "@/components/ImportedNoteViewer";
 import type { NoteDetail } from "@/hooks/useNotes";
 
 const REVISION_STATUS_OPTIONS = [
@@ -159,6 +161,8 @@ export default function NoteDetailPage({
     );
   }
 
+  // Notes pasted by the user have their own tabs; quiz and edit are for the older structured notes
+  const imported = Boolean(note.content.markdown);
   const subjectName = note.subjectId ? syllabusMap[note.subjectId]?.name : null;
   const sectionName = note.sectionId ? syllabusMap[note.sectionId]?.name : null;
 
@@ -179,13 +183,22 @@ export default function NoteDetailPage({
           <h1 className="text-2xl font-bold text-gray-900">{note.title}</h1>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Link href={`/quiz/${params.id}`}>
-              <Button variant="secondary" size="sm">
-                <Brain size={14} aria-hidden="true" />
-                Quiz Me
-              </Button>
-            </Link>
-            {note.kind === "current_affairs_month" ? (
+            {!imported && (
+              <Link href={`/quiz/${params.id}`}>
+                <Button variant="secondary" size="sm">
+                  <Brain size={14} aria-hidden="true" />
+                  Quiz Me
+                </Button>
+              </Link>
+            )}
+            {imported ? (
+              <Link href={`/notes/${params.id}/replace`}>
+                <Button variant="secondary" size="sm">
+                  <RefreshCw size={14} aria-hidden="true" />
+                  Replace notes
+                </Button>
+              </Link>
+            ) : note.kind === "current_affairs_month" ? (
               <Link href="/current-affairs">
                 <Button variant="secondary" size="sm">
                   <Newspaper size={14} aria-hidden="true" />
@@ -230,8 +243,19 @@ export default function NoteDetailPage({
                       setPdfDropdownOpen(false);
                     }}
                   >
-                    Revision Sheet PDF
+                    {imported ? "Quick Revision PDF" : "Revision Sheet PDF"}
                   </button>
+                  {imported && (note.content.practiceQuestions?.length ?? 0) > 0 && (
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      onClick={() => {
+                        window.open(`/notes/${params.id}/print?mode=practice`, "_blank");
+                        setPdfDropdownOpen(false);
+                      }}
+                    >
+                      Practice Questions PDF
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -290,7 +314,7 @@ export default function NoteDetailPage({
       </div>
 
       {/* Note content */}
-      <NoteViewer note={note} />
+      {imported ? <ImportedNoteViewer note={note} /> : <NoteViewer note={note} />}
     </div>
   );
 }

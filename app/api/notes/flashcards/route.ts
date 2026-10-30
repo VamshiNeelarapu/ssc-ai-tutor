@@ -22,6 +22,7 @@ function toTopicNotes(topic: string, notes: IStudyNote[]): ChapterTopicNotes {
       keyFacts: n.content.keyFacts ?? [],
       shortcuts: n.content.shortcuts ?? [],
       commonConfusions: n.content.commonConfusions ?? [],
+      markdown: n.content.markdown,
       mcqs: n.content.mcqs ?? [],
     })),
   };
