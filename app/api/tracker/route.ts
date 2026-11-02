@@ -1,19 +1,28 @@
 import { NextRequest } from "next/server";
 import connectToDatabase from "@/lib/db";
 import StudyNote from "@/models/StudyNote";
-import Conversation from "@/models/Conversation";
 import QuizAttempt from "@/models/QuizAttempt";
 import { requireAuth, apiSuccess, handleApiError } from "@/lib/api-utils";
 
 interface TopicProgress {
-  chatCount: number;
-  chatMessages: number;
+  noteCount: number;
   noteId?: string;
   noteStatus?: string;
+  hasRevision: boolean;
+  practiceQuestions: number;
   quizAttempts: number;
   lastAccuracy?: number;
   avgAccuracy?: number;
   lastActivity?: string;
+}
+
+interface NoteRow {
+  _id: { toString(): string };
+  topicId: string;
+  revisionStatus?: string;
+  updatedAt?: Date;
+  hasRevision: boolean;
+  practiceQuestions: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -21,24 +30,25 @@ export async function GET(request: NextRequest) {
     const session = await requireAuth(request as unknown as Request);
     await connectToDatabase();
 
-    const [notes, chats, attempts] = await Promise.all([
-      StudyNote.find({ userId: session.userId, topicId: { $exists: true, $nin: [null, ""] } })
-        .sort({ updatedAt: -1 })
-        .select("topicId revisionStatus updatedAt"),
-      Conversation.aggregate<{ _id: string; chats: number; messages: number; last: Date }>([
+    const [notes, attempts] = await Promise.all([
+      // Only the flags are read, not the notes themselves, which can be long
+      StudyNote.aggregate<NoteRow>([
+        { $match: { userId: session.userId, topicId: { $exists: true, $nin: [null, ""] } } },
+        { $sort: { updatedAt: -1 } },
         {
-          $match: {
-            userId: session.userId,
-            topicId: { $exists: true, $nin: [null, ""] },
-            "messages.0": { $exists: true },
-          },
-        },
-        {
-          $group: {
-            _id: "$topicId",
-            chats: { $sum: 1 },
-            messages: { $sum: { $size: "$messages" } },
-            last: { $max: "$updatedAt" },
+          $project: {
+            topicId: 1,
+            revisionStatus: 1,
+            updatedAt: 1,
+            hasRevision: { $gt: [{ $strLenCP: { $ifNull: ["$content.quickRevisionMarkdown", ""] } }, 0] },
+            practiceQuestions: {
+              $size: {
+                $ifNull: [
+                  "$content.practiceQuestions",
+                  { $ifNull: ["$content.mcqs", []] },
+                ],
+              },
+            },
           },
         },
       ]),
@@ -49,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     const topics: Record<string, TopicProgress> = {};
     const entry = (id: string): TopicProgress =>
-      (topics[id] ??= { chatCount: 0, chatMessages: 0, quizAttempts: 0 });
+      (topics[id] ??= { noteCount: 0, hasRevision: false, practiceQuestions: 0, quizAttempts: 0 });
     const touch = (t: TopicProgress, when?: Date) => {
       if (when && (!t.lastActivity || when.toISOString() > t.lastActivity)) t.lastActivity = when.toISOString();
     };
@@ -59,19 +69,15 @@ export async function GET(request: NextRequest) {
       if (!n.topicId) continue;
       topicByNote.set(n._id.toString(), n.topicId);
       const t = entry(n.topicId);
+      t.noteCount += 1;
       if (!t.noteId) {
         // newest note per topic decides the status
         t.noteId = n._id.toString();
         t.noteStatus = n.revisionStatus;
       }
+      if (n.hasRevision) t.hasRevision = true;
+      t.practiceQuestions = Math.max(t.practiceQuestions, n.practiceQuestions);
       touch(t, n.updatedAt);
-    }
-
-    for (const c of chats) {
-      const t = entry(c._id);
-      t.chatCount = c.chats;
-      t.chatMessages = c.messages;
-      touch(t, c.last);
     }
 
     const accuracySums = new Map<string, number>();

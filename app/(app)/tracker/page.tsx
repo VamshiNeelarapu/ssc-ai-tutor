@@ -15,40 +15,38 @@ interface TreeNode {
 }
 
 interface TopicProgress {
-  chatCount: number;
-  chatMessages: number;
+  noteCount: number;
   noteId?: string;
   noteStatus?: string;
+  hasRevision: boolean;
+  practiceQuestions: number;
   quizAttempts: number;
   lastAccuracy?: number;
   avgAccuracy?: number;
   lastActivity?: string;
 }
 
-type TopicState = "revised" | "needs_revision" | "learning" | "notes_made" | "chat_only" | "not_started";
+type TopicState = "revised" | "needs_revision" | "learning" | "notes_made" | "not_started";
 
 const STATES: Array<{ id: TopicState; label: string; bar: string; pill: string }> = [
   { id: "revised", label: "Revised", bar: "bg-green-500", pill: "bg-green-100 text-green-700" },
   { id: "needs_revision", label: "Needs revision", bar: "bg-amber-400", pill: "bg-amber-100 text-amber-700" },
   { id: "learning", label: "Learning", bar: "bg-blue-500", pill: "bg-blue-100 text-blue-700" },
   { id: "notes_made", label: "Notes made", bar: "bg-slate-400", pill: "bg-slate-100 text-slate-700" },
-  { id: "chat_only", label: "Chat only", bar: "bg-sky-300", pill: "bg-sky-100 text-sky-700" },
-  { id: "not_started", label: "Not started", bar: "bg-gray-200", pill: "bg-gray-100 text-gray-500" },
+  { id: "not_started", label: "No notes yet", bar: "bg-gray-200", pill: "bg-gray-100 text-gray-500" },
 ];
 
 function stateOf(p?: TopicProgress): TopicState {
-  if (!p) return "not_started";
+  if (!p || !p.noteId) return "not_started";
   if (p.noteStatus === "revised") return "revised";
   if (p.noteStatus === "needs_revision") return "needs_revision";
   if (p.noteStatus === "learning") return "learning";
-  if (p.noteId) return "notes_made";
-  if (p.chatCount > 0) return "chat_only";
-  return "not_started";
+  return "notes_made";
 }
 
 function countStates(topics: TreeNode[], progress: Record<string, TopicProgress>) {
   const counts: Record<TopicState, number> = {
-    revised: 0, needs_revision: 0, learning: 0, notes_made: 0, chat_only: 0, not_started: 0,
+    revised: 0, needs_revision: 0, learning: 0, notes_made: 0, not_started: 0,
   };
   for (const t of topics) counts[stateOf(progress[t.id])] += 1;
   return counts;
@@ -135,8 +133,9 @@ export default function TrackerPage() {
     return {
       counts,
       total: allTopics.length,
-      chatsStarted: allTopics.filter((t) => (progress[t.id]?.chatCount ?? 0) > 0).length,
       notesMade: allTopics.filter((t) => progress[t.id]?.noteId).length,
+      withRevision: allTopics.filter((t) => progress[t.id]?.hasRevision).length,
+      withPractice: allTopics.filter((t) => (progress[t.id]?.practiceQuestions ?? 0) > 0).length,
       avgAccuracy: accuracies.length ? Math.round(accuracies.reduce((a, b) => a + b, 0) / accuracies.length) : null,
     };
   }, [allTopics, progress]);
@@ -156,15 +155,16 @@ export default function TrackerPage() {
         Progress Tracker
       </h1>
       <p className="text-sm text-gray-500 mt-1 mb-5">
-        Every topic, with whether you started a chat, the state of its note, and your quiz results.
+        Every topic, with the state of its notes, whether it has a quick revision and practice questions, and your quiz results.
       </p>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-5">
         {[
           ["Topics", totals.total],
-          ["Chats started", totals.chatsStarted],
           ["Notes made", totals.notesMade],
+          ["With quick revision", totals.withRevision],
+          ["With practice questions", totals.withPractice],
           ["Revised", totals.counts.revised],
           ["Quiz accuracy", totals.avgAccuracy === null ? "—" : `${totals.avgAccuracy}%`],
         ].map(([label, value]) => (
@@ -239,7 +239,7 @@ export default function TrackerPage() {
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <h2 className="text-sm font-semibold text-gray-900 truncate">{subject.name}</h2>
                     <span className="text-xs text-gray-500 flex-shrink-0">
-                      {started}/{subjectTopics.length} topics started
+                      {started}/{subjectTopics.length} topics with notes
                     </span>
                   </div>
                   <StackedBar counts={counts} total={subjectTopics.length} />
@@ -285,7 +285,7 @@ export default function TrackerPage() {
                                 <tr className="text-xs text-gray-400 text-left">
                                   <th className="font-medium pl-12 pr-3 py-1.5">Topic</th>
                                   <th className="font-medium px-3 py-1.5">Status</th>
-                                  <th className="font-medium px-3 py-1.5">Chat</th>
+                                  <th className="font-medium px-3 py-1.5">Notes</th>
                                   <th className="font-medium px-3 py-1.5">Quiz</th>
                                   <th className="font-medium px-3 py-1.5 pr-4">Last activity</th>
                                 </tr>
@@ -311,8 +311,14 @@ export default function TrackerPage() {
                                         </span>
                                       </td>
                                       <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">
-                                        {p && p.chatCount > 0
-                                          ? `${p.chatCount} chat${p.chatCount === 1 ? "" : "s"} · ${p.chatMessages} msgs`
+                                        {p && p.noteCount > 0
+                                          ? [
+                                              `${p.noteCount} note${p.noteCount === 1 ? "" : "s"}`,
+                                              p.hasRevision ? "revision" : null,
+                                              p.practiceQuestions > 0 ? `${p.practiceQuestions} MCQs` : null,
+                                            ]
+                                              .filter(Boolean)
+                                              .join(" · ")
                                           : "—"}
                                       </td>
                                       <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">

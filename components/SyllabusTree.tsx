@@ -64,10 +64,9 @@ interface TreeNodeProps {
   editable?: boolean;
   onMutate?: () => void;
   topicStatus?: Record<string, string>;
-  chatStarted?: Record<string, boolean>;
 }
 
-function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate, topicStatus, chatStarted }: TreeNodeProps) {
+function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate, topicStatus }: TreeNodeProps) {
   const hasChildren = node.children.length > 0;
   const isActive = node.id === activeId;
   const hasActiveChild = hasChildren && node.children.some((c) => c.id === activeId);
@@ -82,11 +81,11 @@ function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate,
 
   const childType = CHILD_TYPE[node.nodeType];
 
-  // Share of a chapter's topics with no chat started yet (hidden until chat data has loaded)
+  // Share of a chapter's topics with no notes yet (hidden until the notes data has loaded)
   const sectionTopics = node.nodeType === "section" ? node.children.filter((c) => c.nodeType === "topic") : [];
   const notStartedPct =
-    chatStarted && sectionTopics.length > 0
-      ? Math.round((sectionTopics.filter((t) => !chatStarted[t.id]).length / sectionTopics.length) * 100)
+    topicStatus && sectionTopics.length > 0
+      ? Math.round((sectionTopics.filter((t) => !topicStatus[t.id]).length / sectionTopics.length) * 100)
       : null;
 
   const Icon =
@@ -292,7 +291,7 @@ function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate,
             {notStartedPct !== null && (
               <span
                 className="flex-shrink-0 text-[11px] tabular-nums text-[#7088b3]"
-                title={`${notStartedPct}% of topics have no chat yet`}
+                title={`${notStartedPct}% of topics have no notes yet`}
               >
                 {notStartedPct}%
               </span>
@@ -339,7 +338,6 @@ function TreeNode({ node, depth = 0, activeId, onNodeSelect, editable, onMutate,
               editable={editable}
               onMutate={onMutate}
               topicStatus={topicStatus}
-              chatStarted={chatStarted}
             />
           ))}
 
@@ -394,10 +392,9 @@ interface SyllabusTreeProps {
   editable?: boolean;
   onMutate?: () => void;
   topicStatus?: Record<string, string>;
-  chatStarted?: Record<string, boolean>;
 }
 
-export function SyllabusTree({ nodes, onNodeSelect, className, editable, onMutate, topicStatus, chatStarted }: SyllabusTreeProps) {
+export function SyllabusTree({ nodes, onNodeSelect, className, editable, onMutate, topicStatus }: SyllabusTreeProps) {
   const searchParams = useSearchParams();
   const activeId = searchParams.get("topicId") || searchParams.get("sectionId") || searchParams.get("subjectId") || "";
 
@@ -421,7 +418,6 @@ export function SyllabusTree({ nodes, onNodeSelect, className, editable, onMutat
             editable={editable}
             onMutate={onMutate}
             topicStatus={topicStatus}
-            chatStarted={chatStarted}
           />
         ))}
       </ul>

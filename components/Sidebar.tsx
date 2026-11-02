@@ -43,7 +43,6 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const [syllabus, setSyllabus] = useState<SyllabusTreeNode[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [topicStatus, setTopicStatus] = useState<Record<string, string> | undefined>(undefined);
-  const [chatStarted, setChatStarted] = useState<Record<string, boolean> | undefined>(undefined);
   const [syllabusOpen, setSyllabusOpen] = useState(true);
   const [conversationsOpen, setConversationsOpen] = useState(false);
   const { requestDelete, dialog: deleteDialog } = useConversationDelete((id, info) => {
@@ -65,9 +64,6 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       .then((r) => r.json())
       .then((data) => {
         if (data && data.map) setTopicStatus(data.map);
-        if (data && Array.isArray(data.chatTopicIds)) {
-          setChatStarted(Object.fromEntries(data.chatTopicIds.map((id: string) => [id, true])));
-        }
       })
       .catch(() => {});
   };
@@ -261,7 +257,6 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               <SyllabusTree
                 nodes={syllabus}
                 topicStatus={topicStatus}
-                chatStarted={chatStarted}
                 editable
                 onMutate={fetchSyllabus}
                 onNodeSelect={(node) => {
