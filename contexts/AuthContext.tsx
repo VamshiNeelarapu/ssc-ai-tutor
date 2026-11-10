@@ -14,7 +14,6 @@ export interface User {
   name: string;
   email: string;
   createdAt?: string;
-  viaMaster?: boolean;
 }
 
 interface AuthContextValue {
