@@ -7,7 +7,7 @@ import { requireAuth, apiError, apiSuccess, handleApiError } from "@/lib/api-uti
 import { rateLimit } from "@/lib/rate-limit";
 
 const Schema = z.object({
-  currentPassword: z.string().optional(),
+  currentPassword: z.string().min(1, "Current password is required"),
   newPassword: z.string().min(8, "New password must be at least 8 characters").max(128),
 });
 
@@ -25,13 +25,8 @@ export async function POST(request: NextRequest) {
     const user = await User.findById(session.userId);
     if (!user) return apiError("User not found", 404);
 
-    // A master-password session may set a new password without knowing the old one
-    if (!session.master) {
-      const current = validation.data.currentPassword;
-      if (!current) return apiError("Current password is required", 400);
-      const ok = await verifyPassword(current, user.passwordHash);
-      if (!ok) return apiError("Current password is incorrect.", 400);
-    }
+    const ok = await verifyPassword(validation.data.currentPassword, user.passwordHash);
+    if (!ok) return apiError("Current password is incorrect.", 400);
 
     user.passwordHash = await hashPassword(validation.data.newPassword);
     await user.save();

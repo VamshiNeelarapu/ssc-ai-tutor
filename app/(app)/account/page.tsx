@@ -302,16 +302,14 @@ export default function AccountPage() {
             </div>
           )}
 
-          {!user?.viaMaster && (
-            <Input
-              label="Current password"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          )}
+          <Input
+            label="Current password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
 
           <Input
             label="New password"
@@ -335,7 +333,7 @@ export default function AccountPage() {
           <Button
             type="submit"
             loading={changingPassword}
-            disabled={(!user?.viaMaster && !currentPassword) || !newPassword || !confirmPassword}
+            disabled={!currentPassword || !newPassword || !confirmPassword}
           >
             Change Password
           </Button>
